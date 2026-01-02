@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct chuneesiumApp: App {
+    @NSApplicationDelegateAdaptor(ChuneesiumAppDelegate.self) var appDelegate
+    
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        Settings {
+            EmptyView()
         }
     }
 }
