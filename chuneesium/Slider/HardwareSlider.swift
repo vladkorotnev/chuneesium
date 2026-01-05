@@ -27,6 +27,14 @@ public struct SliderColor {
         self.g = UInt8(min(255, resolved.linearGreen * 255 * resolved.opacity))
         self.b = UInt8(min(255, resolved.linearBlue * 255 * resolved.opacity))
     }
+    
+    func multiply(brightness: Double) -> SliderColor {
+        return SliderColor(
+            r: UInt8(min(255, max(0, brightness * Double(r)))),
+            g: UInt8(min(255, max(0, brightness * Double(g)))),
+            b: UInt8(min(255, max(0, brightness * Double(b)))),
+        )
+    }
 }
 
 enum SliderCommandType: UInt8 {
@@ -111,7 +119,7 @@ public class HardwareSlider {
         var pinging = true
         while pinging {
             self.sendRequest(.reset)
-            print("Ping...")
+            print("Ping slider...")
             let res = self.receiveResponse()
             if case .ready = res {
                 pinging = false
@@ -141,11 +149,6 @@ public class HardwareSlider {
     
     
     // MARK: - Protocol Logic
-    
-    private func sendRequest(_ command: SliderRequest) {
-        sendPacket(commandId: command.commandNumber, data: command.argumentArray)
-    }
-    
     /// Frames, escapes, and writes a packet to the serial port.
     private func sendPacket(commandId: UInt8, data: [UInt8]) {
         // [Length (after decode)] [Command] [Data...]
@@ -192,13 +195,26 @@ public class HardwareSlider {
         return pkt
     }
     
+    /// Calculates the checksum as defined in the protocol.
+    private func calculateChecksum(for bytes: Data) -> UInt8 {
+        var sum: Int = 0
+        for b in bytes {
+            sum += Int(b & 0xFF)
+        }
+        return UInt8((256 - (sum & 0xFF)) & 0xFF)
+    }
+    
+    private func sendRequest(_ command: SliderRequest) {
+        sendPacket(commandId: command.commandNumber, data: command.argumentArray)
+    }
+    
+    
     private func receiveResponse() -> SliderResponse? {
         guard let pkt = receiveEncodedPacket() else { return nil }
         
-
         let cksum = calculateChecksum(for: pkt.subdata(in: 0..<(pkt.count-1)))
-        if cksum != pkt.last {
-            print("Checksum expected \(cksum), got \(pkt.last)")
+        if pkt.count > 0, cksum != pkt.last {
+            print("Slider Checksum expected \(cksum), got \(pkt.last!)")
         }
         
         switch pkt[1] {
@@ -217,15 +233,6 @@ public class HardwareSlider {
             print("?? pkt = \(pkt[1])")
             return nil
         }
-    }
-    
-    /// Calculates the negated sum checksum as defined in the protocol.
-    private func calculateChecksum(for bytes: Data) -> UInt8 {
-        var sum: Int = 0
-        for b in bytes {
-            sum += Int(b & 0xFF)
-        }
-        return UInt8((256 - (sum & 0xFF)) & 0xFF)
     }
     
     /// Continuous background loop that decodes incoming escaped serial data.
