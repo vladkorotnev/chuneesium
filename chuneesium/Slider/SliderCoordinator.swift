@@ -10,8 +10,9 @@ import SwiftUI
 
 struct SliderViewState {
     let location: SliderCoordinates
-    let color: Color
+    let labelTint: Color
     let label: String
+    let colors: [Color]
 }
 
 enum SliderInputSource {
@@ -35,7 +36,12 @@ class SliderViewModel: ObservableObject {
     private func updateViewState() {
         viewState = items
             .map { item in
-                SliderViewState(location: item.location, color: item.color, label: item.label)
+                SliderViewState(
+                    location: item.location,
+                    labelTint: item.labelTint,
+                    label: item.label,
+                    colors: item.colors.pattern(length: item.location.width * 2)
+                )
             }
         
     }
