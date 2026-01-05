@@ -23,10 +23,20 @@ extension SliderCoordinates {
     }
 }
 
-protocol SliderPlaceable {
-    var location: SliderCoordinates { get }
-    var color: Color { get }
-    var label: String { get }
-    
+protocol SliderPlaceable: SliderPlaceableRaw {
     func hitTest(point: SliderTouchCoordinates, newState: Bool, overallState: Bool)
+}
+
+protocol SliderPlaceableRaw {
+    var location: SliderCoordinates { get }
+    var colors: [Color] { get }
+    var labelTint: Color { get }
+    var label: String { get }
+    func hitTestRaw(point: SliderTouchCoordinates, newState: Bool, overallState: Bool, value: Int)
+}
+
+extension SliderPlaceable {
+    func hitTestRaw(point: SliderTouchCoordinates, newState: Bool, overallState: Bool, value: Int) {
+        self.hitTest(point: point, newState: newState, overallState: overallState)
+    }
 }

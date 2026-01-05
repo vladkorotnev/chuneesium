@@ -23,16 +23,14 @@ final class BottomSliderViewWindowManager {
                 x: screenFrame.minX,
                 y: screenFrame.minY,
                 width: screenFrame.width,
-                height: 75
+                height: 150
             ),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         
-        let contentView = ZStack {
-            SliderView(viewModel: coordinator)
-        }.frame(maxWidth: .infinity)
+        let contentView = SliderView(viewModel: coordinator).frame(maxWidth: .infinity)
         
         window.contentView = NSHostingView(rootView: contentView)
         window.isOpaque = false

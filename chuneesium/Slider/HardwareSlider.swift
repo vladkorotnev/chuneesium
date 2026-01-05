@@ -72,7 +72,7 @@ extension SliderRequest {
     }
 }
 
-enum SliderResponse: Equatable {
+enum SliderResponse {
     case ready
     case singleReport(values: [UInt8])
     case exception(context: UInt8, error: UInt8)
@@ -81,7 +81,7 @@ enum SliderResponse: Equatable {
 
 /// A controller for Sega-style rhythm game slider hardware.
 public class HardwareSlider {
-    private let viewModel: SliderViewModel?
+    private let viewModel: SliderCoordinator?
     private let serialPort: SerialPort
     private let readQueue = DispatchQueue(label: "slider.reader", qos: .userInteractive)
     private var isRunning = false
@@ -90,7 +90,7 @@ public class HardwareSlider {
     /// - Parameter portPath: Path to the device, e.g., "/dev/tty.usbserial" or "/dev/ttyUSB0".
     init(
         portPath: String,
-        viewModel: SliderViewModel? = nil
+        viewModel: SliderCoordinator? = nil
     ) {
         self.serialPort = SerialPort(path: portPath)
         self.viewModel = viewModel
@@ -103,15 +103,17 @@ public class HardwareSlider {
         
         // Protocol specification: 115200 bps, 8N1
         try serialPort.setSettings(
-            baudRateSetting: .symmetrical(.baud115200), minimumBytesToRead: 1
+            baudRateSetting: .symmetrical(.baud115200),
+            minimumBytesToRead: 1,
+            timeout: 3
         )
         
         var pinging = true
         while pinging {
-            sendRequest(.reset)
+            self.sendRequest(.reset)
             print("Ping...")
-            let res = receiveResponse()
-            if res == .ready {
+            let res = self.receiveResponse()
+            if case .ready = res {
                 pinging = false
             }
             sleep(1)
@@ -171,7 +173,7 @@ public class HardwareSlider {
     }
     
     private func receiveEncodedPacket() -> Data? {
-        var pkt = try! serialPort.readData(ofLength: 256)
+        let pkt = try! serialPort.readData(ofLength: 256)
         guard pkt[0] == 0xFF else { return nil }
         
         var rslt = Data()
@@ -235,9 +237,12 @@ public class HardwareSlider {
                 var colors = Array(repeating: SliderColor(r: 0, g: 0, b: 0), count: 31)
                 if let viewState = viewModel?.viewState {
                     viewState.forEach { state in
-                        for i in (state.location.left*2)..<((state.location.left + state.location.width)*2 - 1) {
-                            if i < colors.count {
-                                colors[colors.count - 1 - i] = SliderColor(color: state.color)
+                        for i in 0..<state.location.width*2-1 {
+                            let sliderIndex = colors.count - 1 - i - state.location.left*2
+                            let itemIndex = i
+                            
+                            if sliderIndex < colors.count && sliderIndex >= 0 {
+                                colors[sliderIndex] = SliderColor(color: state.colors[itemIndex])
                             }
                         }
                     }

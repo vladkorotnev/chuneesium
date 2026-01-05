@@ -20,9 +20,15 @@ enum SliderInputSource {
     case hardwareSlider
 }
 
-class SliderViewModel: ObservableObject {
-    @Published var items: [SliderPlaceable]
+class SliderCoordinator: ObservableObject {
+    @Published var items: [SliderPlaceableRaw] {
+        didSet {
+            updateViewState()
+        }
+    }
+    
     @Published var viewState: [SliderViewState]
+    @Published var columnTouchState: [Int] = []
     
     private var inputState: [SliderInputSource: Set<SliderTouchCoordinates>] = [:]
     let threshold = 40
@@ -30,10 +36,11 @@ class SliderViewModel: ObservableObject {
     init(items: [SliderPlaceable]) {
         self.items = items
         self.viewState = []
+        self.columnTouchState = []
         updateViewState()
     }
     
-    private func updateViewState() {
+    func updateViewState() {
         viewState = items
             .map { item in
                 SliderViewState(
@@ -43,15 +50,25 @@ class SliderViewModel: ObservableObject {
                     colors: item.colors.pattern(length: item.location.width * 2)
                 )
             }
-        
     }
-
+    
     func onInputUpdate(
         from source: SliderInputSource,
-        state: [SliderTouchCoordinates: Int]
+        state rawState: [SliderTouchCoordinates: Int]
     ) {
+        if source == .hardwareSlider {
+            var columnState = Array(repeating: 0, count: 16)
+            rawState.forEach { status in
+                columnState[status.key.column] += status.value
+            }
+            for i in columnState.indices {
+                columnState[i] /= 2
+            }
+            columnTouchState = columnState
+        }
+        
         let state = Set(
-            state
+            rawState
                 .filter { $0.value >= threshold }
                 .keys
         )
@@ -60,14 +77,15 @@ class SliderViewModel: ObservableObject {
         
         let newTouches = state.subtracting(touches)
         let goneTouches = touches.subtracting(state)
+        let itemCopy = [] + items
         
-        for item in items {
+        for item in itemCopy {
             for touch in newTouches {
-                item.hitTest(point: touch, newState: true, overallState: !state.isEmpty)
+                item.hitTestRaw(point: touch, newState: true, overallState: !state.isEmpty, value: rawState[touch] ?? 1)
             }
             
             for touch in goneTouches {
-                item.hitTest(point: touch, newState: false, overallState: !state.isEmpty)
+                item.hitTestRaw(point: touch, newState: false, overallState: !state.isEmpty, value: 0)
             }
         }
         
