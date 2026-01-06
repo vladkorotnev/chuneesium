@@ -32,6 +32,10 @@ final class LEDScrollString: LEDEffect {
         self.speedDivisor = speedDivisor
         renderBitmap()
     }
+    
+    func reset() {
+        position = -1
+    }
 
     func createStretchedTextImageRGBA32(
         text: String,

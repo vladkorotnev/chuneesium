@@ -5,6 +5,7 @@
 //  Created by DJ AKASAKA on 2026/01/04.
 //
 
+import Combine
 import MIDIKitCore
 
 final class SceneController {
@@ -21,6 +22,7 @@ final class SceneController {
     
     private let slider: SliderCoordinator
     private let midi: MIDIIO
+    private var cancellables = Set<AnyCancellable>()
     
     init(
         slider: SliderCoordinator,
@@ -31,7 +33,7 @@ final class SceneController {
         self.slider = slider
         self.midi = midi
         
-        midi.onEvent = { [weak self] event in
+        midi.events.sink { [weak self] event in
             guard let self else { return }
             var isDirty = false
             self.activeScene?.items.forEach { item in
@@ -59,6 +61,7 @@ final class SceneController {
             default: break
             }
         }
+        .store(in: &cancellables)
         
         activate(with: .default)
     }
@@ -86,17 +89,20 @@ final class SceneController {
     }
     
     func executeAction(_ action: ActionBinding?, state: ActionEventState) {
-        guard case let .switchScene(id) = action else {
-            midi.executeAction(action, state: state)
-            return
+        guard let action else { return }
+        switch action {
+        case .switchScene(id: let id):
+            guard let id else {
+                activate(with: .default)
+                return
+            }
+            activate(by: id)
+            
+        case .setScene(let content):
+            activeScene = content
+            
+        default: midi.executeAction(action, state: state)
         }
-        
-        guard let id else {
-            activate(with: .default)
-            return
-        }
-        
-        activate(by: id)
     }
 }
 

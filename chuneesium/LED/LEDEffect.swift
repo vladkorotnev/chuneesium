@@ -10,6 +10,13 @@ import Foundation
 protocol LEDEffect {
     var isFinished: Bool { get }
     func draw(on display: LEDDisplay)
+    func reset()
+    func react(to event: ControlEvent)
+}
+
+extension LEDEffect {
+    func reset() {}
+    func react(to event: ControlEvent) {}
 }
 
 final class LEDEffectPlayer {
@@ -36,5 +43,9 @@ final class LEDEffectPlayer {
         guard let currentEffect else { return }
         currentEffect.draw(on: display)
         display.push()
+    }
+    
+    func receive(event: ControlEvent) {
+        currentEffect?.react(to: event)
     }
 }

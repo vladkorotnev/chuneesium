@@ -34,16 +34,85 @@ let MY_SCENE = [
                 label: "Filter",
                 position: 2,
                 width: 1,
-                action: .switchScene(id: "filterA"),
-                holdAction: .switchScene(id: "filterA_autoClose")
+                action: .setScene(content: ControlScene(
+                    id: "filterA",
+                    items: [
+                        FaderControl(
+                            label: "Filter A",
+                            position: 0,
+                            width: 14,
+                            action: .controlChange(channel: 1, control: 0),
+                            initialValue: 0.5,
+                            background: .orange,
+                            notches: .purple,
+                            handle: .white
+                        ),
+                        ButtonControl(
+                            tint: .constant(.blue),
+                            label: "Return",
+                            position: 14,
+                            width: 2,
+                            action: .switchScene(id: nil)
+                        ),
+                    ]
+                )),
+                holdAction: .setScene(content: ControlScene(
+                    id: "filterA_autoClose",
+                    items: [
+                        FaderControl(
+                            label: "Filter A",
+                            position: 0,
+                            width: 16,
+                            action: .controlChange(channel: 1, control: 0),
+                            initialValue: 0.5,
+                            background: .orange,
+                            notches: .purple,
+                            handle: .white,
+                            afterUntouch: .switchScene(id: nil),
+                        ),
+                    ]
+                ))
             ),
             ButtonControl(
                 tint: .constant(.indigo),
                 label: "FX 1",
                 position: 3,
                 width: 1,
-                action: .switchScene(id: "fxA"),
-                holdAction: .switchScene(id: "fxA_autoClose")
+                action: .setScene(content: ControlScene(
+                    id: "fxA",
+                    items: [
+                        XYControl(
+                            label: "FX A",
+                            background: .indigo,
+                            position: 0,
+                            width: 14,
+                            xAction: .controlChange(channel: 3, control: 0),
+                            yAction: .controlChange(channel: 3, control: 1),
+                            onUntouch: .switchScene(id: nil)
+                        ),
+                        ButtonControl(
+                            tint: .constant(.blue),
+                            label: "Return",
+                            position: 14,
+                            width: 2,
+                            action: .switchScene(id: nil)
+                        ),
+                    ]
+                )),
+                holdAction: .setScene(content: ControlScene(
+                    id: "fxA_autoClose",
+                    items: [
+                        XYControl(
+                            label: "FX A",
+                            background: .indigo,
+                            position: 0,
+                            width: 16,
+                            xAction: .controlChange(channel: 3, control: 0),
+                            yAction: .controlChange(channel: 3, control: 1),
+                            onUntouch: .switchScene(id: nil)
+                        ),
+                    ]
+                ))
             ),
             ButtonControl(
                 tint: .dynamic(color: .gray, binding: .note(channel: 1, value: 3)),
@@ -51,7 +120,22 @@ let MY_SCENE = [
                 position: 4,
                 width: 1,
                 action: .note(channel: 1, value: 3),
-                holdAction: .switchScene(id: "lowA_autoClose")
+                holdAction: .setScene(content: ControlScene(
+                    id: "lowA_autoClose",
+                    items: [
+                        FaderControl(
+                            label: "EQ Low A",
+                            position: 0,
+                            width: 16,
+                            action: .controlChange(channel: 1, control: 3),
+                            initialValue: 0.5,
+                            background: .black,
+                            notches: .green,
+                            handle: .white,
+                            afterUntouch: .switchScene(id: nil),
+                        ),
+                    ]
+                ))
             ),
             ButtonControl(
                 tint: .dynamic(color: .gray, binding: .note(channel: 1, value: 4)),
@@ -59,7 +143,22 @@ let MY_SCENE = [
                 position: 5,
                 width: 1,
                 action: .note(channel: 1, value: 4),
-                holdAction: .switchScene(id: "midA_autoClose")
+                holdAction: .setScene(content: ControlScene(
+                    id: "midA_autoClose",
+                    items: [
+                        FaderControl(
+                            label: "EQ Mid A",
+                            position: 0,
+                            width: 16,
+                            action: .controlChange(channel: 1, control: 4),
+                            initialValue: 0.5,
+                            background: .black,
+                            notches: .yellow,
+                            handle: .white,
+                            afterUntouch: .switchScene(id: nil),
+                        ),
+                    ]
+                ))
             ),
             ButtonControl(
                 tint: .dynamic(color: .gray, binding: .note(channel: 1, value: 5)),
@@ -67,7 +166,22 @@ let MY_SCENE = [
                 position: 6,
                 width: 1,
                 action: .note(channel: 1, value: 5),
-                holdAction: .switchScene(id: "highA_autoClose")
+                holdAction: .setScene(content: ControlScene(
+                    id: "highA_autoClose",
+                    items: [
+                        FaderControl(
+                            label: "EQ High A",
+                            position: 0,
+                            width: 16,
+                            action: .controlChange(channel: 1, control: 5),
+                            initialValue: 0.5,
+                            background: .black,
+                            notches: .red,
+                            handle: .white,
+                            afterUntouch: .switchScene(id: nil),
+                        ),
+                    ]
+                ))
             ),
             
             // middle
@@ -79,182 +193,59 @@ let MY_SCENE = [
                 label: "Song Select",
                 position: 7,
                 width: 1,
-                action: .note(channel: 0, value: 0)
+                action: .note(channel: 0, value: 0) //<- not using setScene here because this is a 2-way binding (can be activated via Traktor GUI)
             ),
             ButtonControl(
                 tint: .constant(.purple),
                 label: "X-Fader",
                 position: 8,
                 width: 1,
-                action: .switchScene(id: "xfader"),
-                holdAction: .switchScene(id: "xfader_autoClose")
+                action: .setScene(content: ControlScene(
+                    id: "xfader",
+                    items: [
+                        FaderControl(
+                            label: "X-Fader",
+                            position: 0,
+                            width: 14,
+                            action: .controlChange(channel: 2, control: 0),
+                            initialValue: 0.5,
+                            background: .black,
+                            notches: .white,
+                            handle: .red,
+                        ),
+                        ButtonControl(
+                            tint: .constant(.blue),
+                            label: "Return",
+                            position: 14,
+                            width: 2,
+                            action: .switchScene(id: nil)
+                        ),
+                    ]
+                )),
+                holdAction: .setScene(
+                    content: ControlScene(
+                        id: "xfader_autoClose",
+                        items: [
+                            FaderControl(
+                                label: "X-Fader",
+                                position: 0,
+                                width: 16,
+                                action: .controlChange(channel: 2, control: 0),
+                                initialValue: 0.5,
+                                background: .black,
+                                notches: .white,
+                                handle: .red,
+                                afterUntouch: .switchScene(id: nil),
+                            ),
+                        ]
+                    )
+                )
             ),
-            
-            
         ],
         binding: .default
     ),
-    // MARK: - Deck A Sliders
-    ControlScene(
-        id: "fxA",
-        items: [
-            XYControl(
-                label: "FX A",
-                background: .indigo,
-                position: 0,
-                width: 14,
-                xAction: .controlChange(channel: 3, control: 0),
-                yAction: .controlChange(channel: 3, control: 1),
-                onUntouch: .switchScene(id: nil)
-            ),
-            ButtonControl(
-                tint: .constant(.blue),
-                label: "Return",
-                position: 14,
-                width: 2,
-                action: .switchScene(id: nil)
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "fxA_autoClose",
-        items: [
-            XYControl(
-                label: "FX A",
-                background: .indigo,
-                position: 0,
-                width: 16,
-                xAction: .controlChange(channel: 3, control: 0),
-                yAction: .controlChange(channel: 3, control: 1),
-                onUntouch: .switchScene(id: nil)
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "xfader",
-        items: [
-            FaderControl(
-                label: "X-Fader",
-                position: 0,
-                width: 14,
-                action: .controlChange(channel: 2, control: 0),
-                initialValue: 0.5,
-                background: .black,
-                notches: .white,
-                handle: .red,
-            ),
-            ButtonControl(
-                tint: .constant(.blue),
-                label: "Return",
-                position: 14,
-                width: 2,
-                action: .switchScene(id: nil)
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "xfader_autoClose",
-        items: [
-            FaderControl(
-                label: "X-Fader",
-                position: 0,
-                width: 16,
-                action: .controlChange(channel: 2, control: 0),
-                initialValue: 0.5,
-                background: .black,
-                notches: .white,
-                handle: .red,
-                afterUntouch: .switchScene(id: nil),
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "filterA",
-        items: [
-            FaderControl(
-                label: "Filter A",
-                position: 0,
-                width: 14,
-                action: .controlChange(channel: 1, control: 0),
-                initialValue: 0.5,
-                background: .orange,
-                notches: .purple,
-                handle: .white
-            ),
-            ButtonControl(
-                tint: .constant(.blue),
-                label: "Return",
-                position: 14,
-                width: 2,
-                action: .switchScene(id: nil)
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "filterA_autoClose",
-        items: [
-            FaderControl(
-                label: "Filter A",
-                position: 0,
-                width: 16,
-                action: .controlChange(channel: 1, control: 0),
-                initialValue: 0.5,
-                background: .orange,
-                notches: .purple,
-                handle: .white,
-                afterUntouch: .switchScene(id: nil),
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "lowA_autoClose",
-        items: [
-            FaderControl(
-                label: "EQ Low A",
-                position: 0,
-                width: 16,
-                action: .controlChange(channel: 1, control: 3),
-                initialValue: 0.5,
-                background: .black,
-                notches: .green,
-                handle: .white,
-                afterUntouch: .switchScene(id: nil),
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "midA_autoClose",
-        items: [
-            FaderControl(
-                label: "EQ Mid A",
-                position: 0,
-                width: 16,
-                action: .controlChange(channel: 1, control: 4),
-                initialValue: 0.5,
-                background: .black,
-                notches: .yellow,
-                handle: .white,
-                afterUntouch: .switchScene(id: nil),
-            ),
-        ]
-    ),
-    ControlScene(
-        id: "highA_autoClose",
-        items: [
-            FaderControl(
-                label: "EQ High A",
-                position: 0,
-                width: 16,
-                action: .controlChange(channel: 1, control: 5),
-                initialValue: 0.5,
-                background: .black,
-                notches: .red,
-                handle: .white,
-                afterUntouch: .switchScene(id: nil),
-            ),
-        ]
-    ),
-    
+  
+           
     // MARK: - Song Selection Controls
     ControlScene(
         id: "song_select",

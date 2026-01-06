@@ -14,8 +14,12 @@ final class LEDDisplay {
         self.rightHalf = rightHalf
     }
     
+    var columnCount: Int {
+        leftHalf.stripCount + rightHalf.stripCount
+    }
+    
     private func xToSurface(x: Int) -> (LEDSurface, Int)? {
-        guard x >= 0, x < (leftHalf.stripCount + rightHalf.stripCount) else { return nil }
+        guard x >= 0, x < columnCount else { return nil }
         
         let surface = {
             if x < leftHalf.stripCount {
@@ -29,7 +33,7 @@ final class LEDDisplay {
             if x < leftHalf.stripCount {
                 x
             } else {
-                leftHalf.stripCount - x
+                x - leftHalf.stripCount
             }
         }()
         

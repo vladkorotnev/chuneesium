@@ -9,44 +9,153 @@ import Combine
 import SwiftUI
 
 final class AppViewModel: ObservableObject {
-    private static let nilPortName = "(None)"
-    @Published var serialPortName: String = nilPortName
-    {
-        didSet {
-            guard serialPortName != Self.nilPortName else {
-                sliderCfgStore.portPath = nil
-                return
-            }
-            
-            sliderCfgStore.portPath = serialPortName
-        }
-    }
-    @Published private(set) var isConnected = false
-    
-    var allSerialPorts: [String] {
-        [Self.nilPortName] + sliderCfgStore.allPorts
-    }
+    private var cancellables = Set<AnyCancellable>()
+    private var sliderCfgStore: HardwareSliderConfigStoreProtocol
+    private var ledCfgStore: LedBoardConfigStoreProtocol
     
     private var sceneController: SceneController
     private var sliderCoordinator: SliderCoordinator
     private var sliderWindow: BottomSliderViewWindowManager
-    private var sliderCfgStore: HardwareSliderConfigStoreProtocol
+    private var trackNameViewModel: TrackNameViewModel
+    private var trackNameWindow: TrackNameViewWindowManager
     private var hardwareSlider: HardwareSlider?
     private var midi: MIDIIO
     
+    private var leftLedbd: LEDBD?
+    private var rightLedbd: LEDBD?
+    private(set) var leftSurface: LEDSurface
+    private(set) var rightSurface: LEDSurface
+    private var ledDisplay: LEDDisplay
+    private var effector: LEDEffectPlayer
+    
+    
+    private static let nilPortName = "(None)"
+    @Published var sliderPortName: String = nilPortName
+    {
+        didSet {
+            guard sliderPortName != Self.nilPortName else {
+                sliderCfgStore.portPath = nil
+                return
+            }
+            
+            if sliderPortName == leftLedPortName {
+                leftLedPortName = Self.nilPortName
+            }
+            
+            if sliderPortName == rightLedPortName {
+                rightLedPortName = Self.nilPortName
+            }
+            
+            sliderCfgStore.portPath = sliderPortName
+        }
+    }
+    
+    @Published var leftLedPortName: String = nilPortName
+    {
+        didSet {
+            guard leftLedPortName != Self.nilPortName else {
+                ledCfgStore.leftBoard = nil
+                return
+            }
+            
+            if sliderPortName == leftLedPortName {
+                sliderPortName = Self.nilPortName
+            }
+            
+            if leftLedPortName == rightLedPortName {
+                rightLedPortName = Self.nilPortName
+            }
+            
+            ledCfgStore.leftBoard = leftLedPortName
+        }
+    }
+    
+    @Published var rightLedPortName: String = nilPortName
+    {
+        didSet {
+            guard rightLedPortName != Self.nilPortName else {
+                ledCfgStore.rightBoard = nil
+                return
+            }
+            
+            if sliderPortName == rightLedPortName {
+                sliderPortName = Self.nilPortName
+            }
+            
+            if leftLedPortName == rightLedPortName {
+                leftLedPortName = Self.nilPortName
+            }
+            
+            
+            ledCfgStore.rightBoard = rightLedPortName
+        }
+    }
+    
+    @Published var ledBrightness: Double = 1.0 {
+        didSet {
+            ledCfgStore.brightness = ledBrightness
+            leftSurface.brightness = ledBrightness
+            rightSurface.brightness = ledBrightness
+        }
+    }
+    
+    @Published private(set) var isSliderConnected = false
+    @Published private(set) var isLedConnected = false
+    
+    var allSerialPorts: [String] {
+        [Self.nilPortName] + sliderCfgStore.allPorts
+    }
+    private let tobs = TraktorOBSRelayClient()
+    
     init() {
         sliderCfgStore = HardwareSliderConfigStore()
-        serialPortName = sliderCfgStore.portPath ?? Self.nilPortName
+        sliderPortName = sliderCfgStore.portPath ?? Self.nilPortName
+        ledCfgStore = LedBoardConfigStore()
+        leftLedPortName = ledCfgStore.leftBoard ?? Self.nilPortName
+        rightLedPortName = ledCfgStore.rightBoard ?? Self.nilPortName
+        ledBrightness = ledCfgStore.brightness
         
         midi = MIDIIO()
         
         sliderCoordinator = SliderCoordinator(items: [])
         sliderWindow = BottomSliderViewWindowManager(coordinator: sliderCoordinator)
+        
+        trackNameViewModel = TrackNameViewModel()
+        trackNameWindow = TrackNameViewWindowManager(viewModel: trackNameViewModel)
+        
+        leftSurface = LEDSurface(port: nil, stripCount: 5, stripInversePhase: false, brightness: ledCfgStore.brightness)
+        rightSurface = LEDSurface(port: nil, stripCount: 6, stripInversePhase: true, brightness: ledCfgStore.brightness)
+        
+        leftSurface.airTowerSeparateColors = [.init(color: .red), .init(color: .pink), .init(color: .indigo)]
+        rightSurface.airTowerColor = .init(color: .green)
+        
+        ledDisplay = LEDDisplay(leftHalf: leftSurface, rightHalf: rightSurface)
+        effector = LEDEffectPlayer(display: ledDisplay)
+        effector.currentEffect = LEDEffectSequencer(effects: [
+            LEDEffectTime(timeInterval: 12.0, effect: LEDMatrixRain()),
+            LEDScrollString(text: "DJ AKASAKA", color: .cyan),
+            LEDEffectTime(timeInterval: 3.0, effect: LEDSwoopbars(evenColor: .init(color: .pink), oddColor: .init(color: .indigo))),
+            LEDScrollString(text: "INTHEMIX", color: .orange),
+            LEDEffectTime(timeInterval: 5.0, effect: LEDSoundwaveMiddle(color: .init(color: .indigo), source: .controlChange(channel: 0, control: 127))),
+            LEDRainbow(endless: false, loopCount: 2),
+            LEDEffectTime(timeInterval: 5.0, effect: LEDSoundwaveFull(color: .init(color: .orange), source: .controlChange(channel: 0, control: 127))),
+            LEDEffectTime(timeInterval: 10.0, effect: LEDSnake()),
+            LEDEffectTime(timeInterval: 3.0, effect: LEDSwoopbars(evenColor: .init(color: .cyan), oddColor: .init(color: .green))),
+            LEDEffectTime(timeInterval: 5.0, effect: LEDVolumeBar(color: .init(color: .orange), source: .controlChange(channel: 0, control: 127))),
+        ])
+        
+
         sceneController = SceneController(
             slider: sliderCoordinator,
             midi: midi,
             scenes: MY_SCENE
         )
+        
+        midi.events
+            .sink { [weak self] event in
+                self?.effector.receive(event: event)
+            }
+            .store(in: &cancellables)
         
         sceneController.onChange = { [weak self] newScene in
             guard let newScene else {
@@ -59,7 +168,7 @@ final class AppViewModel: ObservableObject {
         
         sliderCfgStore.onUpdate = { [weak self] newPortName in
             print("Port changed to \(String(describing: newPortName))")
-            if self?.isConnected == true {
+            if self?.isSliderConnected == true {
                 self?.reinitSlider(portPath: newPortName)
             }
         }
@@ -69,6 +178,30 @@ final class AppViewModel: ObservableObject {
         sceneController.onDirty = { @MainActor [weak self] in
             self?.sliderCoordinator.updateViewState()
         }
+        
+        // Wire up TraktorOBSRelayClient to TrackNameViewModel
+        tobs.currentTrack
+            .sink { [weak self] song in
+                guard let self = self else { return }
+                self.trackNameViewModel.updateTrack(song)
+                
+                // Update album art URL
+                if let song = song {
+                    let artworkURL = self.tobs.artworkURL(for: song)
+                    self.trackNameViewModel.updateAlbumArtURL(artworkURL)
+                } else {
+                    self.trackNameViewModel.updateAlbumArtURL(nil)
+                }
+                
+                self.trackNameViewModel.incrementTrackNumber()
+            }
+            .store(in: &cancellables)
+        
+        tobs.bpmChanged
+            .sink { [weak self] bpm in
+                self?.trackNameViewModel.updateBPM(bpm)
+            }
+            .store(in: &cancellables)
     }
     
     private func reinitSlider(portPath: String?) {
@@ -76,7 +209,7 @@ final class AppViewModel: ObservableObject {
             hardwareSlider.close()
         }
         
-        isConnected = false
+        isSliderConnected = false
         
         guard let portPath else {
             hardwareSlider = nil
@@ -86,7 +219,7 @@ final class AppViewModel: ObservableObject {
         hardwareSlider = HardwareSlider(portPath: portPath, viewModel: sliderCoordinator)
         do {
             try hardwareSlider?.open()
-            isConnected = true
+            isSliderConnected = true
         }
         catch {
             print("ERROR: \(error)")
@@ -94,11 +227,51 @@ final class AppViewModel: ObservableObject {
         }
     }
     
-    public func reconnect() {
-        if isConnected {
+    private func reinitLeds(left: String?, right: String?) {
+        if let leftLedbd {
+            leftSurface.port = nil
+            leftLedbd.close()
+            self.leftLedbd = nil
+        }
+        
+        if let rightLedbd {
+            rightSurface.port = nil
+            rightLedbd.close()
+            self.rightLedbd = nil
+        }
+        
+        isLedConnected = false
+        
+        if let left {
+            let bd = LEDBD(portPath: left, ledCount: 53)
+            do { try bd.open() } catch { return }
+            leftLedbd = bd
+            leftSurface.port = bd
+            isLedConnected = true
+        }
+        
+        if let right {
+            let bd = LEDBD(portPath: right, ledCount: 63)
+            do { try bd.open() } catch { return }
+            rightLedbd = bd
+            rightSurface.port = bd
+            isLedConnected = true
+        }
+    }
+    
+    public func reconnectSlider() {
+        if isSliderConnected {
             reinitSlider(portPath: nil)
         } else {
             reinitSlider(portPath: sliderCfgStore.portPath)
+        }
+    }
+    
+    public func reconnectLed() {
+        if isLedConnected {
+            reinitLeds(left: nil, right: nil)
+        } else {
+            reinitLeds(left: ledCfgStore.leftBoard, right: ledCfgStore.rightBoard)
         }
     }
 }

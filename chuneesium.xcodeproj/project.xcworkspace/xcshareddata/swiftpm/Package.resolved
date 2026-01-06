@@ -1,5 +1,5 @@
 {
-  "originHash" : "3c7a2cf0ad5831d6833c1170b38b17f0469ca77dbc588ff173a7e3de5d8471d8",
+  "originHash" : "60b985501b632a5bbef4e83d3e7813be289f806cd2ef0b6a5954aeeec81d3f28",
   "pins" : [
     {
       "identity" : "midikit",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "8af8007269daea0d0cb3788427e63acd04a31a3b",
         "version" : "0.10.7"
+      }
+    },
+    {
+      "identity" : "starscream",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/daltoniam/Starscream",
+      "state" : {
+        "revision" : "c6bfd1af48efcc9a9ad203665db12375ba6b145a",
+        "version" : "4.0.8"
       }
     },
     {

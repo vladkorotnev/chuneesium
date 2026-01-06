@@ -6,12 +6,9 @@
 //
 
 import Foundation
-import IOKit
-import IOKit.serial
 
-protocol HardwareSliderConfigStoreProtocol {
+protocol HardwareSliderConfigStoreProtocol: SerialPortEnumerator {
     var portPath: String? { get set }
-    var allPorts: [String] { get }
     var onUpdate: ((String?) -> Void)? { get set }
 }
 
@@ -26,28 +23,6 @@ final class HardwareSliderConfigStore: HardwareSliderConfigStoreProtocol {
         set {
             UserDefaults.standard.set(newValue, forKey: "sliderPortPath")
             onUpdate?(newValue)
-        }
-    }
-    
-    var allPorts: [String] {
-        get {
-            guard let serialBSDService = IOServiceMatching(kIOSerialBSDServiceValue) else { return [] }
-            guard var dict = serialBSDService as NSDictionary as? [String: AnyObject] else { return [] }
-
-            dict[kIOSerialBSDTypeKey] = kIOSerialBSDAllTypes as AnyObject
-            var serialPortIterator = io_iterator_t()
-            guard IOServiceGetMatchingServices(kIOMainPortDefault, serialBSDService, &serialPortIterator) == kIOReturnSuccess else { return [] }
-
-            var rslt: [String] = []
-            while case let modemService = IOIteratorNext(serialPortIterator), modemService != 0 {
-                let prop = IORegistryEntryCreateCFProperty(modemService, kIOCalloutDeviceKey as CFString, kCFAllocatorDefault, IOOptionBits(0))
-                if let value = prop?.takeUnretainedValue(), let bsdPath = value as? String {
-                    rslt.append(bsdPath)
-                }
-            }
-
-            IOObjectRelease(serialPortIterator)
-            return rslt
         }
     }
     

@@ -17,6 +17,7 @@ enum ActionBinding {
     case note(channel: Int, value: Int)
     case controlChange(channel: Int, control: Int)
     case switchScene(id: String?)
+    case setScene(content: ControlScene)
 }
 
 enum LightBinding {
@@ -26,7 +27,7 @@ enum LightBinding {
 }
 
 extension LightBinding {
-    func extractValue(_ event: ControlEvent?) -> Double? {
+    func extractRawValue(_ event: ControlEvent?) -> Double? {
         guard let event else { return nil }
         
         switch self {
@@ -41,22 +42,28 @@ extension LightBinding {
             if case let .noteOn(payload) = event,
                payload.channel.intValue == channel,
                payload.note.number.intValue == value {
-                return min(1.0, 0.5 + Double(payload.velocity.midi1Value) / Double(128.0))
+                return Double(payload.velocity.midi1Value) / Double(127.0)
             }
             else if case let .noteOff(payload) = event,
                 payload.channel.intValue == channel,
                 payload.note.number.intValue == value {
-                return 0.5
+                return 0
              }
         case let .controlChange(channel, control):
             if case let .cc(payload) = event,
                payload.channel.intValue == channel,
                payload.controller.number.intValue == control {
-                return min(1.0, 0.5 + Double(payload.value.midi1Value) / Double(128.0))
+                return Double(payload.value.midi1Value) / Double(127.0)
             }
         }
         
         return nil
+    }
+    
+    func extractValue(_ event: ControlEvent?) -> Double? {
+        guard let extraction = extractRawValue(event) else { return nil }
+        
+        return min(1.0, 0.5 + extraction)
     }
 }
 

@@ -10,6 +10,7 @@
 		5C04977F2F0A273700ABC9BC /* MIDIKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C04977E2F0A273700ABC9BC /* MIDIKit */; };
 		5C0497812F0A273700ABC9BC /* MIDIKitCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5C0497802F0A273700ABC9BC /* MIDIKitCore */; };
 		5C0497832F0A273700ABC9BC /* MIDIKitIO in Frameworks */ = {isa = PBXBuildFile; productRef = 5C0497822F0A273700ABC9BC /* MIDIKitIO */; };
+		5C0498452F0D455900ABC9BC /* Starscream in Frameworks */ = {isa = PBXBuildFile; productRef = 5C0498442F0D455900ABC9BC /* Starscream */; };
 		5CD700D52F0765F500EB2F78 /* SwiftSerial in Frameworks */ = {isa = PBXBuildFile; productRef = 5CD700D42F0765F500EB2F78 /* SwiftSerial */; };
 /* End PBXBuildFile section */
 
@@ -33,6 +34,7 @@
 				5C0497832F0A273700ABC9BC /* MIDIKitIO in Frameworks */,
 				5C0497812F0A273700ABC9BC /* MIDIKitCore in Frameworks */,
 				5C04977F2F0A273700ABC9BC /* MIDIKit in Frameworks */,
+				5C0498452F0D455900ABC9BC /* Starscream in Frameworks */,
 				5CD700D52F0765F500EB2F78 /* SwiftSerial in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -80,6 +82,7 @@
 				5C04977E2F0A273700ABC9BC /* MIDIKit */,
 				5C0497802F0A273700ABC9BC /* MIDIKitCore */,
 				5C0497822F0A273700ABC9BC /* MIDIKitIO */,
+				5C0498442F0D455900ABC9BC /* Starscream */,
 			);
 			productName = chuneesium;
 			productReference = 5CF81DB42F0699F1009B17EC /* chuneesium.app */;
@@ -112,6 +115,7 @@
 			packageReferences = (
 				5CD700D32F0765F500EB2F78 /* XCRemoteSwiftPackageReference "SwiftSerial" */,
 				5C04977D2F0A273700ABC9BC /* XCRemoteSwiftPackageReference "MIDIKit" */,
+				5C0498432F0D455900ABC9BC /* XCRemoteSwiftPackageReference "Starscream" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5CF81DB52F0699F1009B17EC /* Products */;
@@ -356,6 +360,14 @@
 				minimumVersion = 0.10.7;
 			};
 		};
+		5C0498432F0D455900ABC9BC /* XCRemoteSwiftPackageReference "Starscream" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/daltoniam/Starscream";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.8;
+			};
+		};
 		5CD700D32F0765F500EB2F78 /* XCRemoteSwiftPackageReference "SwiftSerial" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/mredig/SwiftSerial";
@@ -381,6 +393,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5C04977D2F0A273700ABC9BC /* XCRemoteSwiftPackageReference "MIDIKit" */;
 			productName = MIDIKitIO;
+		};
+		5C0498442F0D455900ABC9BC /* Starscream */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C0498432F0D455900ABC9BC /* XCRemoteSwiftPackageReference "Starscream" */;
+			productName = Starscream;
 		};
 		5CD700D42F0765F500EB2F78 /* SwiftSerial */ = {
 			isa = XCSwiftPackageProductDependency;

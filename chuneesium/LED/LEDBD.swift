@@ -34,7 +34,7 @@ extension LedCommand {
         case let .setPixelData(data): data.flatMap { [$0.r, $0.g, $0.b] }
         case let .setTimeout(ms): [UInt8((ms >> 8) & 0xFF), UInt8(ms & 0xFF)]
         case let .setResponse(enabled): [UInt8(enabled ? 1 : 0)]
-        case let .setPixelCount(count): [UInt8((count >> 8) & 0xFF), UInt8(count & 0xFF)]
+        case let .setPixelCount(count): [UInt8(truncatingIfNeeded: count)]
         default: []
         }
     }
@@ -117,6 +117,11 @@ final class LEDBD: LEDPort {
         print("LEDBD ready")
     }
     
+    func close() {
+        sendRequest(.setPixelData(Array(repeating: .init(), count: ledCount)))
+        serialPort.closePort()
+    }
+    
     // MARK: - Protocol Logic
     /// Frames, escapes, and writes a packet to the serial port.
     private func sendPacket(commandId: UInt8, data: [UInt8], dest: UInt8 = 0x02, src: UInt8 = 0x01) {
@@ -144,7 +149,7 @@ final class LEDBD: LEDPort {
     private func receiveEncodedPacket() -> Data? {
         let pkt = try! serialPort.readData(ofLength: 256)
         guard pkt.count > 0, pkt[0] == 0xE0 else { return nil }
-        
+
         var rslt = Data()
         rslt.append(pkt[0])
         var esc = false
@@ -158,7 +163,9 @@ final class LEDBD: LEDPort {
             esc = false
         }
         
-        return pkt
+        // Return decoded (unescaped) data so downstream parsing and checksums
+        // operate on the logical on-wire fields, not the escaped representation.
+        return rslt
     }
     
     /// Calculates the checksum as defined in the protocol.
@@ -200,8 +207,9 @@ final class LEDBD: LEDPort {
                 chip: String(data: headless.subdata(in: 9..<14), encoding: .utf8) ?? "ERROR",
                 fw_ver: UInt(headless[14])
             )
+        case LedCommandType.setResponse.rawValue: return nil
         default:
-            print("?? LED pkt = \(pkt[4])")
+            print("?? LED pkt = \(pkt[5])")
             return nil
         }
     }

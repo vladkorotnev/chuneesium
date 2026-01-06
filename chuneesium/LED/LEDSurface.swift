@@ -6,9 +6,16 @@
 //
 
 import Foundation
+import Combine
 
-final class LEDSurface {
-    private let port: LEDPort
+final class LEDSurface: ObservableObject {
+    var port: LEDPort? {
+        didSet {
+            guard let port else { return }
+            assert(stripCount * pixelsPerStrip + 3 == port.ledCount, "LED Board does not match LED count for surface")
+        }
+    }
+    
     private let inversePhase: Bool
     private let pixelsPerStrip = 10
     private var pushing = false
@@ -24,28 +31,30 @@ final class LEDSurface {
         }
     }
     
-    var airTowerSeparateColors: [SliderColor] = [
+    @Published var airTowerSeparateColors: [SliderColor] = [
         .init(),
         .init(),
         .init()
     ]
-    var pixelGrid: [[SliderColor]]
+    @Published var pixelGrid: [[SliderColor]]
     
     init(
-        port: LEDBD,
+        port: LEDBD?,
         stripCount: Int,
-        stripInversePhase: Bool
+        stripInversePhase: Bool,
+        brightness: Double = 0.6
     ) {
         self.port = port
         self.inversePhase = stripInversePhase
         self.stripCount = stripCount
+        self.brightness = brightness
         self.pixelGrid = Array(repeating: Array(repeating: .init(), count: pixelsPerStrip), count: stripCount)
-        assert(stripCount * pixelsPerStrip + 3 == port.ledCount, "LED Board does not match LED count for surface")
+        
     }
     
 
     func push() {
-        guard !pushing else { return }
+        guard let port, !pushing else { return }
         pushing = true
         
         let dispData = pixelGrid.enumerated()

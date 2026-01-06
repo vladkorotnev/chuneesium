@@ -5,6 +5,7 @@
 //  Created by DJ AKASAKA on 2026/01/04.
 //
 
+import Combine
 import Foundation
 import MIDIKitCore
 import MIDIKitIO
@@ -19,7 +20,11 @@ final class MIDIIO {
         manufacturer: "DJ AKASAKA"
     )
     
-    var onEvent: ((MIDIEvent) -> Void)?
+    var events: some Publisher<MIDIEvent, Never> {
+        _events
+    }
+    
+    private let _events = PassthroughSubject<MIDIEvent, Never>()
     
     init() {
         do {
@@ -30,7 +35,7 @@ final class MIDIIO {
                 uniqueID: .userDefaultsManaged(key: "midi_cncs1", suite: UserDefaults.standard),
                 receiver: .events(options: [], { [weak self] events, _, _ in
                     Task { @MainActor [weak self] in
-                        events.forEach { self?.onEvent?($0) }
+                        events.forEach { self?._events.send($0) }
                     }
                 })
             )
@@ -73,7 +78,7 @@ final class MIDIIO {
                 }())
                 try port.send(event: .cc(.init(number: UInt7(control)), value: .midi1(value), channel: UInt4(channel)))
                 
-            case .switchScene(_): fatalError("How did this get here?")
+            default: fatalError("How did this get here?")
             }
         }
         catch {

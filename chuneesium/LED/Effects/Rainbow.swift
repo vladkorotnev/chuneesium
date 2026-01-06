@@ -28,6 +28,12 @@ final class LEDRainbow: LEDEffect {
         phase == 6
     }
     
+    func reset() {
+        phase = 0
+        loopTime = 0
+        currentColor = .init(r: 255, g: 0, b: 0)
+    }
+    
     func draw(on display: LEDDisplay) {
         if phase == 0 {
             if currentColor.r == 255 {

@@ -29,6 +29,7 @@ final class LEDEffectSequencer: LEDEffect {
         curEffect.draw(on: display)
         
         if curEffect.isFinished {
+            curEffect.reset()
             if position == effects.count-1 {
                 position = 0
             } else {
@@ -36,14 +37,27 @@ final class LEDEffectSequencer: LEDEffect {
             }
         }
     }
+    
+    func reset() {
+        effects.forEach { $0.reset() }
+    }
+    
+    func react(to event: ControlEvent) {
+        curEffect?.react(to: event)
+    }
 }
 
-final class LEDEffectDelay: LEDEffect {
+final class LEDEffectTime: LEDEffect {
     var timeInterval: TimeInterval
     var start: Date?
+    var effect: LEDEffect?
     
-    init(timeInterval: TimeInterval) {
+    init(
+        timeInterval: TimeInterval,
+        effect: LEDEffect? = nil
+    ) {
         self.timeInterval = timeInterval
+        self.effect = effect
     }
     
     var isFinished: Bool {
@@ -55,5 +69,16 @@ final class LEDEffectDelay: LEDEffect {
         if start == nil {
             start = Date()
         }
+        
+        effect?.draw(on: display)
+    }
+    
+    func reset() {
+        start = nil
+        effect?.reset()
+    }
+    
+    func react(to event: ControlEvent) {
+        effect?.react(to: event)
     }
 }

@@ -9,20 +9,15 @@ import SwiftUI
 
 struct TrackNameView: View {
     // Single variable to control the entire theme
-    var themeColor: Color = Color(red: 0.5, green: 0.2, blue: 0.8) // Purple
+    @ObservedObject var viewModel: TrackNameViewModel
     
-    @State var leftSettingText: String = "SPEED: 9.25"
-    @State var rightSettingText: String = "MIRROR: OFF"
-    @State var trackNumber: Int = 1
-    @State var difficultyText: String = "MASTER"
-    @State var songName: String = "Song Name"
-    @State var artistName: String = "Artist Name"
+    @State var rightSettingText: String = "VIBES: GOOD"
     
     var body: some View {
         VStack(spacing: 8) {
             // MARK: - Top Settings Bar
             HStack {
-                Text(leftSettingText)
+                Text(viewModel.leftSettingText)
                     .frame(maxWidth: .infinity)
                 Spacer()
                 Divider()
@@ -35,20 +30,24 @@ struct TrackNameView: View {
             .font(.system(size: 14, weight: .bold))
             .foregroundColor(.white)
             .padding(.horizontal, 40)
+            .padding([.top], 5)
             
             // MARK: - Main Card
             ZStack {
                 VStack(spacing: 0) {
-                    // Top Section (Master/Level)
+                    // Top Section (Level)
                     HStack {
-                        // Song Artwork Placeholder
                         VStack(alignment: .leading, spacing: -2) {
-                            Text("TRACK \(trackNumber)")
+                            Text("TRACK \(viewModel.trackNumber)")
                                 .font(.system(size: 14, weight: .bold))
-                            Text(difficultyText)
-                                .font(.system(size: 44, weight: .black))
-                                .italic()
-                                .kerning(3)
+                                .padding([.top], 15)
+                            ScrollingText(
+                                text: viewModel.difficultyText,
+                                font: .system(size: 44, weight: .black).italic(),
+                                color: .white
+                            )
+                            .padding([.top], -5)
+                            .frame(height: 50)
                         }
                         
                         Spacer()
@@ -59,7 +58,7 @@ struct TrackNameView: View {
                                 .font(.system(size: 12, weight: .bold))
                                 .padding(.vertical, 2)
                                 .foregroundStyle(Color(red: 0, green: 0, blue: 0.6))
-                            Text("175")
+                            Text(String(format: "%.0f", viewModel.bpm))
                                 .font(.system(size: 28, weight: .black))
                                 .frame(maxWidth: .infinity)
                                 .background(Color(red: 0, green: 0, blue: 0.6))
@@ -73,45 +72,63 @@ struct TrackNameView: View {
                     .padding(.trailing, 15)
                     .padding(.leading, 130)
                     .frame(height: 75)
-                    .background(themeColor)
+                    .background(viewModel.themeColor)
                     .foregroundColor(.white)
                     
                     // Bottom Section (Song Info)
                     HStack {
                         // Song Artwork Placeholder
-                        Spacer(minLength: 120.0)
+                        Spacer(minLength: 115.0)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(songName)
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.black.opacity(0.8))
+                            ScrollingText(
+                                text: viewModel.songName,
+                                font: .system(size: 20, weight: .bold),
+                                color: .black.opacity(0.8)
+                            )
+                            .frame(height: 24)
+                            .padding([.top], 5.0)
                             
                             // Thin accent line
                             Rectangle()
-                                .fill(themeColor.opacity(0.6))
+                                .fill(viewModel.themeColor.opacity(0.6))
                                 .frame(height: 2)
                             
-                            Text(artistName)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
+                            ScrollingText(
+                                text: viewModel.artistName,
+                                font: .system(size: 14, weight: .medium),
+                                color: Color(white: 0.4)
+                            )
+                            .frame(height: 18)
+                            .padding([.bottom], 5.0)
                         }
                     }
                     .padding(.horizontal, 15)
+                    .padding([.bottom], 5.0)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                     .background(Color.white)
                 }
                 
                 HStack {
-                    Image(systemName: "person.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .padding(20)
-                        .aspectRatio(1, contentMode: .fit)
-                        .foregroundColor(.gray)
-                        .background(.white)
-                        .border(.gray.opacity(0.3))
-                        .frame(maxWidth: 150.0, maxHeight: 150.0, alignment: .leading)
-                        .shadow(radius: 1.0)
-                        .padding(10)
+                    Group {
+                        if let albumArt = viewModel.albumArtImage {
+                            Image(nsImage: albumArt)
+                                .resizable()
+                                .scaledToFit()
+                        } else {
+                            Image(systemName: "music.quarternote.3")
+                                .resizable()
+                                .scaledToFit()
+                                .padding(20)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .aspectRatio(1, contentMode: .fit)
+                    .background(.white)
+                    .border(.gray.opacity(0.3))
+                    .frame(maxWidth: 110.0, maxHeight: 110.0, alignment: .leading)
+                    .shadow(radius: 1.0)
+                    .padding(10)
+                    .clipShape(Rectangle())
                         
                     Spacer()
                 }
@@ -129,6 +146,6 @@ struct TrackNameView: View {
 // MARK: - Preview
 struct TrackNameView_Previews: PreviewProvider {
     static var previews: some View {
-        TrackNameView()
+        TrackNameView(viewModel: TrackNameViewModel())
     }
 }

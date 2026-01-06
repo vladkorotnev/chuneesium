@@ -7,35 +7,6 @@
 
 import Foundation
 import SwiftSerial
-import SwiftUI
-
-/// Represents an RGB color for an individual slider segment.
-public struct SliderColor {
-    public var r: UInt8
-    public var g: UInt8
-    public var b: UInt8
-    
-    public init(r: UInt8 = 0, g: UInt8 = 0, b: UInt8 = 0) {
-        self.r = r
-        self.g = g
-        self.b = b
-    }
-    
-    init(color: Color) {
-        let resolved = color.resolve(in: .init())
-        self.r = UInt8(min(255, resolved.linearRed * 255 * resolved.opacity))
-        self.g = UInt8(min(255, resolved.linearGreen * 255 * resolved.opacity))
-        self.b = UInt8(min(255, resolved.linearBlue * 255 * resolved.opacity))
-    }
-    
-    func multiply(brightness: Double) -> SliderColor {
-        return SliderColor(
-            r: UInt8(min(255, max(0, brightness * Double(r)))),
-            g: UInt8(min(255, max(0, brightness * Double(g)))),
-            b: UInt8(min(255, max(0, brightness * Double(b)))),
-        )
-    }
-}
 
 enum SliderCommandType: UInt8 {
     case singleReport = 1
@@ -175,24 +146,59 @@ public class HardwareSlider {
         }
     }
     
+    /// Reads and decodes a single protocol packet from the serial stream.
+    /// - Returns: A fully decoded packet in the form
+    ///   [0xFF, cmd, argc, args..., checksum]
     private func receiveEncodedPacket() -> Data? {
-        let pkt = try! serialPort.readData(ofLength: 256)
-        guard pkt[0] == 0xFF else { return nil }
-        
-        var rslt = Data()
-        rslt.append(pkt[0])
-        var esc = false
-        for byte in pkt.subdata(in: 1..<pkt.count) {
-            if byte == 0xFD {
-                esc = true
-                continue
+        do {
+            let encoded = try serialPort.readData(ofLength: 256)
+            guard !encoded.isEmpty else { return nil }
+            
+            // Find SYNC byte (0xFF)
+            guard let syncIndex = encoded.firstIndex(of: 0xFF) else {
+                return nil
             }
             
-            rslt.append(byte + (esc ? 1 : 0))
-            esc = false
+            var decoded = Data()
+            decoded.append(0xFF)
+            
+            var esc = false
+            var expectedLength: Int? = nil
+            
+            // Decode bytes after SYNC, handling ESC (0xFD)
+            for byte in encoded[(syncIndex + 1)..<encoded.count] {
+                if byte == 0xFD {
+                    esc = true
+                    continue
+                }
+                
+                let decodedByte = byte &+ (esc ? 1 : 0)
+                decoded.append(decodedByte)
+                esc = false
+                
+                // Once we have SYNC, cmd, argc we can determine the full length:
+                // 1 (sync) + 1 (cmd) + 1 (argc) + argc (args) + 1 (checksum)
+                if decoded.count == 3 {
+                    let argc = Int(decoded[2])
+                    expectedLength = 1 + 1 + 1 + argc + 1
+                }
+                
+                if let expectedLength, decoded.count >= expectedLength {
+                    break
+                }
+            }
+            
+            guard let expectedLength = expectedLength,
+                  decoded.count >= expectedLength else {
+                return nil
+            }
+            
+            // Trim to the first full packet in case there are extra bytes.
+            return decoded.subdata(in: 0..<expectedLength)
+        } catch {
+            print("Slider: Failed to read from serial port: \(error)")
+            return nil
         }
-        
-        return pkt
     }
     
     /// Calculates the checksum as defined in the protocol.
@@ -211,26 +217,51 @@ public class HardwareSlider {
     
     private func receiveResponse() -> SliderResponse? {
         guard let pkt = receiveEncodedPacket() else { return nil }
+        guard pkt.count >= 4 else { return nil } // SYNC, cmd, argc, checksum
         
-        let cksum = calculateChecksum(for: pkt.subdata(in: 0..<(pkt.count-1)))
-        if pkt.count > 0, cksum != pkt.last {
-            print("Slider Checksum expected \(cksum), got \(pkt.last!)")
+        let checksumIndex = pkt.count - 1
+        let packetWithoutChecksum = pkt.subdata(in: 0..<checksumIndex)
+        let expectedChecksum = calculateChecksum(for: packetWithoutChecksum)
+        let receivedChecksum = pkt[checksumIndex]
+        
+        if expectedChecksum != receivedChecksum {
+            print("Slider Checksum expected \(expectedChecksum), got \(receivedChecksum)")
         }
         
-        switch pkt[1] {
-        case SliderCommandType.singleReport.rawValue: return SliderResponse.singleReport(values: [] + pkt.subdata(in: 3..<35))
-        case SliderCommandType.exception.rawValue: return SliderResponse.exception(context: pkt[3], error: pkt[4])
-        case SliderCommandType.reset.rawValue: return SliderResponse.ready
+        let cmd = pkt[1]
+        let argc = Int(pkt[2])
+        let argsStart = 3
+        let argsEnd = argsStart + argc
+        
+        guard pkt.count == 1 + 1 + 1 + argc + 1 else {
+            print("Slider: Packet length/argc mismatch (cmd=\(cmd), argc=\(argc), count=\(pkt.count))")
+            return nil
+        }
+        
+        let args = pkt.subdata(in: argsStart..<argsEnd)
+        
+        switch cmd {
+        case SliderCommandType.singleReport.rawValue:
+            return SliderResponse.singleReport(values: Array(args))
+            
+        case SliderCommandType.exception.rawValue:
+            guard args.count >= 2 else { return nil }
+            return SliderResponse.exception(context: args[0], error: args[1])
+            
+        case SliderCommandType.reset.rawValue:
+            return SliderResponse.ready
+            
         case SliderCommandType.getInfo.rawValue:
-            let headless = pkt.subdata(in: 3..<(pkt.count-1))
+            guard args.count >= 0x12 else { return nil }
             return SliderResponse.getInfo(
-                model: String(data: headless.subdata(in: 0..<8), encoding: .utf8) ?? "ERROR",
-                class: UInt(headless[8]),
-                chip: String(data: headless.subdata(in: 9..<14), encoding: .utf8) ?? "ERROR",
-                fw_ver: UInt(headless[14])
+                model: String(data: args.subdata(in: 0..<8), encoding: .utf8) ?? "ERROR",
+                class: UInt(args[8]),
+                chip: String(data: args.subdata(in: 9..<14), encoding: .utf8) ?? "ERROR",
+                fw_ver: UInt(args[14])
             )
+            
         default:
-            print("?? pkt = \(pkt[1])")
+            print("Slider: Unknown packet cmd=\(cmd)")
             return nil
         }
     }
