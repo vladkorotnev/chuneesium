@@ -14,6 +14,8 @@ final class AppViewModel: ObservableObject {
     private var sliderCfgStore: HardwareSliderConfigStoreProtocol
     private var ledCfgStore: LedBoardConfigStoreProtocol
     private var djNameCfgStore: DJNameConfigStoreProtocol
+    private var jvsCfgStore: JVSConfigStoreProtocol
+    private var windowCfgStore: WindowVisibilityConfigStoreProtocol
     
     private var sceneController: SceneController
     private var sliderCoordinator: SliderCoordinator
@@ -23,6 +25,7 @@ final class AppViewModel: ObservableObject {
     private var djNameViewModel: DJNameViewModel
     private var djNameWindow: DJNameViewWindowManager
     private var hardwareSlider: HardwareSlider?
+    private var jvsIO: JVSIO?
     private var midi: MIDIIO
     
     private var leftLedbd: LEDBD?
@@ -104,8 +107,42 @@ final class AppViewModel: ObservableObject {
         }
     }
     
+    @Published var jvsPortName: String = nilPortName
+    {
+        didSet {
+            guard jvsPortName != Self.nilPortName else {
+                jvsCfgStore.portPath = nil
+                return
+            }
+            
+            jvsCfgStore.portPath = jvsPortName
+        }
+    }
+    
     @Published private(set) var isSliderConnected = false
     @Published private(set) var isLedConnected = false
+    @Published private(set) var isJVSConnected = false
+    
+    @Published var showBottomSlider: Bool = true {
+        didSet {
+            windowCfgStore.showBottomSlider = showBottomSlider
+            updateWindowVisibility()
+        }
+    }
+    
+    @Published var showTrackName: Bool = true {
+        didSet {
+            windowCfgStore.showTrackName = showTrackName
+            updateWindowVisibility()
+        }
+    }
+    
+    @Published var showDJName: Bool = true {
+        didSet {
+            windowCfgStore.showDJName = showDJName
+            updateWindowVisibility()
+        }
+    }
     
     var allSerialPorts: [String] {
         [Self.nilPortName] + sliderCfgStore.allPorts
@@ -120,7 +157,15 @@ final class AppViewModel: ObservableObject {
         rightLedPortName = ledCfgStore.rightBoard ?? Self.nilPortName
         ledBrightness = ledCfgStore.brightness
         
+        jvsCfgStore = JVSConfigStore()
+        jvsPortName = jvsCfgStore.portPath ?? Self.nilPortName
+        
         djNameCfgStore = DJNameConfigStore()
+        
+        windowCfgStore = WindowVisibilityConfigStore()
+        showBottomSlider = windowCfgStore.showBottomSlider
+        showTrackName = windowCfgStore.showTrackName
+        showDJName = windowCfgStore.showDJName
         
         midi = MIDIIO()
         
@@ -177,9 +222,16 @@ final class AppViewModel: ObservableObject {
         }
         
         sliderCfgStore.onUpdate = { [weak self] newPortName in
-            print("Port changed to \(String(describing: newPortName))")
+            print("Slider port changed to \(String(describing: newPortName))")
             if self?.isSliderConnected == true {
                 self?.reinitSlider(portPath: newPortName)
+            }
+        }
+        
+        jvsCfgStore.onUpdate = { [weak self] newPortName in
+            print("JVS port changed to \(String(describing: newPortName))")
+            if self?.isJVSConnected == true {
+                self?.reinitJVS(portPath: newPortName)
             }
         }
         
@@ -252,6 +304,8 @@ final class AppViewModel: ObservableObject {
                 self?.trackNameViewModel.updateBPM(bpm)
             }
             .store(in: &cancellables)
+        
+        updateWindowVisibility()
     }
     
     private func reinitSlider(portPath: String?) {
@@ -309,6 +363,37 @@ final class AppViewModel: ObservableObject {
         }
     }
     
+    private func reinitJVS(portPath: String?) {
+        if let jvsIO {
+            jvsIO.close()
+        }
+        
+        isJVSConnected = false
+        
+        guard let portPath else {
+            jvsIO = nil
+            return
+        }
+        
+        jvsIO = JVSIO(portPath: portPath)
+        do {
+            try jvsIO?.open()
+            isJVSConnected = true
+            
+            // Subscribe to JVS switch state updates
+            jvsIO?.switchState
+                .sink { [weak self] state in
+                    // Handle JVS switch state updates here
+                    print("JVS state: sys=\(String(format: "%02x", state.systemState)) player=\(state.playerBytes.map { String(format: "%02x", $0) }.joined(separator: " "))")
+                }
+                .store(in: &cancellables)
+        }
+        catch {
+            print("JVS ERROR: \(error)")
+            jvsIO = nil
+        }
+    }
+    
     public func reconnectSlider() {
         if isSliderConnected {
             reinitSlider(portPath: nil)
@@ -322,6 +407,14 @@ final class AppViewModel: ObservableObject {
             reinitLeds(left: nil, right: nil)
         } else {
             reinitLeds(left: ledCfgStore.leftBoard, right: ledCfgStore.rightBoard)
+        }
+    }
+    
+    public func reconnectJVS() {
+        if isJVSConnected {
+            reinitJVS(portPath: nil)
+        } else {
+            reinitJVS(portPath: jvsCfgStore.portPath)
         }
     }
     
@@ -348,5 +441,25 @@ final class AppViewModel: ObservableObject {
     
     func setDJNameImage(_ image: NSImage?, path: String?) {
         djNameViewModel.setImage(image, path: path)
+    }
+    
+    private func updateWindowVisibility() {
+        if showBottomSlider {
+            sliderWindow.window.orderFront(nil)
+        } else {
+            sliderWindow.window.orderOut(nil)
+        }
+        
+        if showTrackName {
+            trackNameWindow.window.orderFront(nil)
+        } else {
+            trackNameWindow.window.orderOut(nil)
+        }
+        
+        if showDJName {
+            djNameWindow.window.orderFront(nil)
+        } else {
+            djNameWindow.window.orderOut(nil)
+        }
     }
 }

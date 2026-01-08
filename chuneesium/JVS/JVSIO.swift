@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftSerial
+import Combine
 
 private enum JVSCommandType: UInt8 {
     case reset = 0xF0
@@ -28,6 +29,17 @@ enum JVSError: Error {
     case badChecksum
     case malformed
     case badAddress
+}
+
+/// JVS switch state update containing raw switch data bytes
+struct JVSSwitchState: Equatable {
+    let systemState: UInt8
+    let playerBytes: Data
+    
+    init(systemState: UInt8, playerBytes: Data) {
+        self.systemState = systemState
+        self.playerBytes = playerBytes
+    }
 }
 
 extension JVSCommand {
@@ -52,9 +64,23 @@ extension JVSCommand {
 
 final class JVSIO {
     private let serialPort: SerialPort
+    private var pollingTask: Task<Void, Never>?
+    private var isRunning = false
+    
+    /// Publisher for JVS switch state updates
+    var switchState: some Publisher<JVSSwitchState, Never> {
+        _switchState
+    }
+    
+    private let _switchState = PassthroughSubject<JVSSwitchState, Never>()
+    
+    /// Configuration for polling
+    var playerCount: UInt8 = 2
+    var bytesPerPlayer: UInt8 = 2
+    var pollingInterval: TimeInterval = 0.016 // ~60Hz
     
     init(
-        portPath: String,
+        portPath: String
     ) {
         self.serialPort = SerialPort(path: portPath)
     }
@@ -69,40 +95,74 @@ final class JVSIO {
             timeout: 3
         )
     
-        var pinging = false
-        while pinging {
-            sendCommand(to: 0xFF, command: .reset)
-            sleep(1)
-            sendCommand(to: 0xFF, command: .reset)
-            sleep(1)
-            sendCommand(to: 0xFF, command: .setAddress(1))
-            let res = receiveResponse()
-            if case .success = res {
-                print("JVS did set address")
-                pinging = false
-            }
+        // Reset and set address
+        sendCommand(to: 0xFF, command: .reset)
+        Thread.sleep(forTimeInterval: 0.5)
+        sendCommand(to: 0xFF, command: .reset)
+        Thread.sleep(forTimeInterval: 0.5)
+        sendCommand(to: 0xFF, command: .setAddress(1))
+        
+        let res = receiveResponse()
+        if case .success = res {
+            print("JVS did set address")
+        } else {
+            print("JVS address set failed: \(res)")
         }
+        
         print("JVS connected")
 
         sendCommand(to: 0x01, command: .identify)
-        let res = receiveResponse()
-        if case let .success(data) = res {
-            print("JVS did identify: \(String(data: data, encoding: .utf8))")
+        let identifyRes = receiveResponse()
+        if case let .success(data) = identifyRes {
+            print("JVS did identify: \(String(data: data, encoding: .utf8) ?? "unknown")")
         }
         
-        while false {
-            Thread.sleep(forTimeInterval: 0.03)
-            sendCommand(to: 0x01, command: .readSwitches(players: 2, bytes: 2))
-            let sw = receiveResponse()
-            if case let .success(data) = sw {
-                print("JVS did read state: \(data.map { String(format: "%02x ", $0) }.joined())")
-            }
+        // Start the async polling task
+        isRunning = true
+        pollingTask = Task { [weak self] in
+            await self?.pollingLoop()
         }
-        
     }
     
     func close() {
+        isRunning = false
+        pollingTask?.cancel()
+        pollingTask = nil
         serialPort.closePort()
+    }
+    
+    // MARK: - Async Polling Loop
+    
+    private func pollingLoop() async {
+        var previousState: JVSSwitchState? = nil
+        
+        while isRunning && !Task.isCancelled {
+            sendCommand(to: 0x01, command: .readSwitches(players: playerCount, bytes: bytesPerPlayer))
+            let result = receiveResponse()
+            
+            if case let .success(data) = result {
+                // Data format: [system state byte] [player bytes...]
+                if data.count >= 1 {
+                    let systemState = data[0]
+                    let playerBytes = data.count > 1 ? data.subdata(in: 1..<data.count) : Data()
+                    let newState = JVSSwitchState(systemState: systemState, playerBytes: playerBytes)
+                    
+                    // Only publish if state changed
+                    if newState != previousState {
+                        _switchState.send(newState)
+                        previousState = newState
+                    }
+                }
+            }
+            
+            // Sleep for polling interval
+            do {
+                try await Task.sleep(nanoseconds: UInt64(pollingInterval * 1_000_000_000))
+            } catch {
+                // Task cancelled
+                break
+            }
+        }
     }
     
     // MARK: - Protocol Logic
@@ -210,4 +270,3 @@ final class JVSIO {
         sendPacket(commandId: command.commandNumber, data: command.argumentArray, dest: to)
     }
 }
-

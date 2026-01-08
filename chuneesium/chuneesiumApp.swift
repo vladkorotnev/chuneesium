@@ -71,6 +71,33 @@ struct chuneesiumApp: App {
                 }
                 Slider(value: $vm.ledBrightness, in: 0.3...1.0, minimumValueLabel: Image(systemName: "sun.min"), maximumValueLabel: Image(systemName: "sun.max"), label: { Text("Brightness") } )
                 
+                HStack {
+                    Picker("JVS IO:", selection: $vm.jvsPortName) {
+                        ForEach(vm.allSerialPorts, id: \.self) {
+                            Text($0)
+                        }
+                    }
+                    .disabled(vm.isJVSConnected)
+                    Button {
+                        vm.reconnectJVS()
+                    } label: {
+                        Image(systemName: vm.isJVSConnected ? "cable.connector.slash" : "cable.connector")
+                    }
+                }
+                
+                Divider()
+                    .padding(.vertical, 8)
+                
+                // Window Visibility Settings
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Window Visibility")
+                        .font(.headline)
+                    
+                    Toggle("Show Bottom Slider Window", isOn: $vm.showBottomSlider)
+                    Toggle("Show Track Name Window", isOn: $vm.showTrackName)
+                    Toggle("Show DJ Name Window", isOn: $vm.showDJName)
+                }
+                
                 Divider()
                     .padding(.vertical, 8)
                 
