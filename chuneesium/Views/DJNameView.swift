@@ -6,21 +6,15 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct DJNameView: View {
-    @State
-    var rankText: String = "NEW FACE"
-    
-    @State 
-    var nameText: String = "AKASAKA"
-    
-    @State
-    var ratingText: String = "12:34"
+    @ObservedObject var viewModel: DJNameViewModel
     
     var body: some View {
             VStack(spacing: 4) {
                 // MARK: - New Comer Header
-                Text(rankText)
+                Text(viewModel.rankText)
                     .font(.system(size: 22, weight: .medium, design: .default))
                     .foregroundStyle(.black)
                     .italic()
@@ -50,7 +44,7 @@ struct DJNameView: View {
                                     .font(.system(size: 18, weight: .bold))
                             }
                             
-                            Text(nameText)
+                            Text(viewModel.nameText)
                                 .font(.system(size: 30, weight: .medium))
                                 .tracking(4) // Adds spacing between letters
                         }
@@ -66,12 +60,12 @@ struct DJNameView: View {
                         
                         // Bottom Row: Rating
                         HStack(alignment: .bottom, spacing: 30) {
-                            Text("RATING")
+                            Text("TIMING")
                                 .font(.system(size: 14, weight: .black))
                                 .foregroundColor(.green)
                                 .italic()
                             
-                            Text(ratingText)
+                            Text(viewModel.ratingText)
                                 .font(.system(size: 24, weight: .bold, design: .monospaced))
                                 .foregroundColor(.green)
                                 
@@ -83,14 +77,22 @@ struct DJNameView: View {
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
-                    // Right Side: Character Placeholder
-                        Image(systemName: "person.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 50.0)
-                            .padding(20)
-                            .foregroundColor(.gray)
-                            .border(.gray.opacity(0.3))
+                    // Right Side: Character Image
+                    Group {
+                        if let djImage = viewModel.djImage {
+                            Image(nsImage: djImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            Image(systemName: "person.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .frame(width: 90, height: 90)
+                    .clipped()
+                    .border(.gray.opacity(0.3))
                 }
                 .background(Color.white)
                 .border(Color.gray.opacity(0.5), width: 1)
@@ -110,5 +112,5 @@ struct DJNameView: View {
 }
 
 #Preview {
-    DJNameView()
+    DJNameView(viewModel: DJNameViewModel(configStore: DJNameConfigStore()))
 }

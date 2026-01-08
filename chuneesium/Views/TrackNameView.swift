@@ -113,7 +113,7 @@ struct TrackNameView: View {
                         if let albumArt = viewModel.albumArtImage {
                             Image(nsImage: albumArt)
                                 .resizable()
-                                .scaledToFit()
+                                .scaledToFill()
                         } else {
                             Image(systemName: "music.quarternote.3")
                                 .resizable()
@@ -122,13 +122,12 @@ struct TrackNameView: View {
                                 .foregroundColor(.gray)
                         }
                     }
-                    .aspectRatio(1, contentMode: .fit)
+                    .frame(width: 110, height: 110)
+                    .clipped()
                     .background(.white)
                     .border(.gray.opacity(0.3))
-                    .frame(maxWidth: 110.0, maxHeight: 110.0, alignment: .leading)
                     .shadow(radius: 1.0)
                     .padding(10)
-                    .clipShape(Rectangle())
                         
                     Spacer()
                 }

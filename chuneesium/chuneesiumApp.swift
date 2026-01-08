@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import AppKit
+internal import UniformTypeIdentifiers
 
 @main
 struct chuneesiumApp: App {
@@ -68,6 +70,68 @@ struct chuneesiumApp: App {
                     }
                 }
                 Slider(value: $vm.ledBrightness, in: 0.3...1.0, minimumValueLabel: Image(systemName: "sun.min"), maximumValueLabel: Image(systemName: "sun.max"), label: { Text("Brightness") } )
+                
+                Divider()
+                    .padding(.vertical, 8)
+                
+                Button("Reset Track Number") {
+                    vm.resetTrackNumber()
+                }
+                
+                Divider()
+                    .padding(.vertical, 8)
+                
+                // DJ Name Settings Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("DJ Name Settings")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Rank Text:")
+                            .font(.subheadline)
+                        TextField("Rank Text", text: Binding(
+                            get: { vm.djNameRankText },
+                            set: { vm.djNameRankText = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Name Text:")
+                            .font(.subheadline)
+                        TextField("Name Text", text: Binding(
+                            get: { vm.djNameNameText },
+                            set: { vm.djNameNameText = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("DJ Image:")
+                            .font(.subheadline)
+                        HStack {
+                            Button("Select Image...") {
+                                let panel = NSOpenPanel()
+                                panel.allowedContentTypes = [.image]
+                                panel.allowsMultipleSelection = false
+                                panel.canChooseDirectories = false
+                                panel.canChooseFiles = true
+                                
+                                if panel.runModal() == .OK {
+                                    if let url = panel.url {
+                                        if let image = NSImage(contentsOf: url) {
+                                            vm.setDJNameImage(image, path: url.path)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Button("Clear Image") {
+                                vm.setDJNameImage(nil, path: nil)
+                            }
+                        }
+                    }
+                }
                 
             }
             .frame(width: 500.0)

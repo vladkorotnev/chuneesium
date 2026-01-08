@@ -67,7 +67,7 @@ final class LEDSoundwaveMiddle: LEDEffect {
     
     func draw(on display: LEDDisplay) {
         for i in offset..<display.columnCount {
-            display.setColumn(x: i, column: columnForSample(samples[i - offset]).map { $0.multiply(brightness: Double(i) / Double(display.columnCount-1)) })
+            display.setColumn(x: i, column: columnForSample(samples[i - offset]).map { $0.multiply(brightness: Double(i+1) / Double(display.columnCount)) })
         }
         
         if offset > 0 {
@@ -151,7 +151,7 @@ final class LEDSoundwaveFull: LEDEffect {
     
     func draw(on display: LEDDisplay) {
         for i in offset..<display.columnCount {
-            display.setColumn(x: i, column: columnForSample(samples[i - offset]).map { $0.multiply(brightness: Double(i) / Double(display.columnCount-1)) })
+            display.setColumn(x: i, column: columnForSample(samples[i - offset]).map { $0.multiply(brightness: Double(i + 1) / Double(display.columnCount)) })
         }
         
         if offset > 0 {

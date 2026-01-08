@@ -7,17 +7,21 @@
 
 import Combine
 import SwiftUI
+import AppKit
 
 final class AppViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var sliderCfgStore: HardwareSliderConfigStoreProtocol
     private var ledCfgStore: LedBoardConfigStoreProtocol
+    private var djNameCfgStore: DJNameConfigStoreProtocol
     
     private var sceneController: SceneController
     private var sliderCoordinator: SliderCoordinator
     private var sliderWindow: BottomSliderViewWindowManager
     private var trackNameViewModel: TrackNameViewModel
     private var trackNameWindow: TrackNameViewWindowManager
+    private var djNameViewModel: DJNameViewModel
+    private var djNameWindow: DJNameViewWindowManager
     private var hardwareSlider: HardwareSlider?
     private var midi: MIDIIO
     
@@ -27,6 +31,7 @@ final class AppViewModel: ObservableObject {
     private(set) var rightSurface: LEDSurface
     private var ledDisplay: LEDDisplay
     private var effector: LEDEffectPlayer
+    private var previousTrack: TraktorSongOnAir? = nil
     
     
     private static let nilPortName = "(None)"
@@ -115,6 +120,8 @@ final class AppViewModel: ObservableObject {
         rightLedPortName = ledCfgStore.rightBoard ?? Self.nilPortName
         ledBrightness = ledCfgStore.brightness
         
+        djNameCfgStore = DJNameConfigStore()
+        
         midi = MIDIIO()
         
         sliderCoordinator = SliderCoordinator(items: [])
@@ -122,6 +129,9 @@ final class AppViewModel: ObservableObject {
         
         trackNameViewModel = TrackNameViewModel()
         trackNameWindow = TrackNameViewWindowManager(viewModel: trackNameViewModel)
+        
+        djNameViewModel = DJNameViewModel(configStore: djNameCfgStore)
+        djNameWindow = DJNameViewWindowManager(viewModel: djNameViewModel)
         
         leftSurface = LEDSurface(port: nil, stripCount: 5, stripInversePhase: false, brightness: ledCfgStore.brightness)
         rightSurface = LEDSurface(port: nil, stripCount: 6, stripInversePhase: true, brightness: ledCfgStore.brightness)
@@ -183,17 +193,57 @@ final class AppViewModel: ObservableObject {
         tobs.currentTrack
             .sink { [weak self] song in
                 guard let self = self else { return }
-                self.trackNameViewModel.updateTrack(song)
                 
-                // Update album art URL
-                if let song = song {
-                    let artworkURL = self.tobs.artworkURL(for: song)
-                    self.trackNameViewModel.updateAlbumArtURL(artworkURL)
-                } else {
-                    self.trackNameViewModel.updateAlbumArtURL(nil)
+                // Only update if the track actually changed (not just a duplicate)
+                if song?.id != self.previousTrack?.id {
+                    self.trackNameViewModel.updateTrack(song)
+                    
+                    // Update album art URL
+                    if let song = song {
+                        let artworkURL = self.tobs.artworkURL(for: song)
+                        self.trackNameViewModel.updateAlbumArtURL(artworkURL)
+                    } else {
+                        self.trackNameViewModel.updateAlbumArtURL(nil)
+                    }
+                    
+                    self.previousTrack = song
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to nowPlaying to detect when all tracks stop
+        // This handles the case where processUpdates returns early and currentTrack doesn't get set to nil
+        tobs.nowPlaying
+            .sink { [weak self] info in
+                guard let self = self else { return }
+                // If songsOnAir is empty or nil, clear the track
+                guard let songs = info.songsOnAir, !songs.isEmpty else {
+                    // All tracks stopped - clear the display
+                    if self.previousTrack != nil {
+                        self.trackNameViewModel.updateTrack(nil)
+                        self.trackNameViewModel.updateAlbumArtURL(nil)
+                        self.previousTrack = nil
+                    }
+                    return
                 }
                 
-                self.trackNameViewModel.incrementTrackNumber()
+                // Check if any tracks are actually playing
+                let hasPlayingTracks = songs.contains { $0.isPlaying == true }
+                if !hasPlayingTracks && self.previousTrack != nil {
+                    // All tracks stopped playing - clear the display
+                    self.trackNameViewModel.updateTrack(nil)
+                    self.trackNameViewModel.updateAlbumArtURL(nil)
+                    self.previousTrack = nil
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Only increment track number when a track actually starts (not on currentTrack changes)
+        tobs.trackStarted
+            .sink { [weak self] _ in
+                self?.trackNameViewModel.incrementTrackNumber()
+                // Start the DJ name timer on first track
+                self?.djNameViewModel.startTimer()
             }
             .store(in: &cancellables)
         
@@ -273,5 +323,30 @@ final class AppViewModel: ObservableObject {
         } else {
             reinitLeds(left: ledCfgStore.leftBoard, right: ledCfgStore.rightBoard)
         }
+    }
+    
+    public func resetTrackNumber() {
+        trackNameViewModel.resetTrackNumber()
+        djNameViewModel.resetTimer()
+    }
+    
+    var djNameRankText: String {
+        get { djNameViewModel.rankText }
+        set { 
+            djNameViewModel.rankText = newValue
+            djNameViewModel.saveToStore()
+        }
+    }
+    
+    var djNameNameText: String {
+        get { djNameViewModel.nameText }
+        set { 
+            djNameViewModel.nameText = newValue
+            djNameViewModel.saveToStore()
+        }
+    }
+    
+    func setDJNameImage(_ image: NSImage?, path: String?) {
+        djNameViewModel.setImage(image, path: path)
     }
 }

@@ -54,6 +54,11 @@ final class TrackNameViewModel: ObservableObject {
         themeColor = diff.0
     }
     
+    func resetTrackNumber() {
+        trackSequenceCounter = 0
+        trackNumber = 0
+    }
+    
     func updateAlbumArtURL(_ url: URL?) {
         albumArtURL = url
         loadAlbumArt(from: url)

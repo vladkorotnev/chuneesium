@@ -10,6 +10,7 @@ import SwiftUI
 
 class ChuneesiumAppDelegate: NSObject, NSApplicationDelegate {
   func applicationDidFinishLaunching(_ notification: Notification) {
-
+      let jvs = JVSIO(portPath: "/dev/cu.usbmodem2101")
+      try! jvs.open()
   }
 }

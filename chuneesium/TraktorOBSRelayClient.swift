@@ -261,9 +261,9 @@ final class TraktorOBSRelayClient: NSObject, ObservableObject {
     /// Port of `processUpdates(info)` from the original JS `api.js`,
     /// but expressed in Combine publishers instead of global callbacks.
     private func processUpdates(_ info: TraktorNowPlayingInfo) {
+        guard let songs = info.songsOnAir else { return }
         nowPlayingSubject.send(info)
-
-        guard let songs = info.songsOnAir, !songs.isEmpty else { return }
+        guard !songs.isEmpty else { return }
 
         // Build new maps
         let newTracksByPath: [String: TraktorSongOnAir] = Dictionary(
