@@ -370,10 +370,10 @@
 		};
 		5CD700D32F0765F500EB2F78 /* XCRemoteSwiftPackageReference "SwiftSerial" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/mredig/SwiftSerial";
+			repositoryURL = "https://github.com/yeokm1/SwiftSerial.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.1.5;
+				minimumVersion = 0.1.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

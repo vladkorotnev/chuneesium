@@ -82,12 +82,12 @@ final class LEDBD: LEDPort {
         try serialPort.openPort()
         
         // Protocol specification: 115200 bps, 8N1
-        try serialPort.setSettings(
-            baudRateSetting: .symmetrical(.baud115200),
+        serialPort.setSettings(
+            receiveRate: .baud115200,
+            transmitRate: .baud115200,
             minimumBytesToRead: 1,
             timeout: 3
         )
-    
         
         var pinging = true
         while pinging {

@@ -62,8 +62,9 @@ final class JVSIO {
     func open() throws {
         try serialPort.openPort()
         
-        try serialPort.setSettings(
-            baudRateSetting: .symmetrical(.baud230400),
+        serialPort.setSettings(
+            receiveRate: .baud115200,
+            transmitRate: .baud115200,
             minimumBytesToRead: 1,
             timeout: 3
         )
@@ -89,12 +90,12 @@ final class JVSIO {
             print("JVS did identify: \(String(data: data, encoding: .utf8))")
         }
         
-        while true {
+        while false {
             Thread.sleep(forTimeInterval: 0.03)
             sendCommand(to: 0x01, command: .readSwitches(players: 2, bytes: 2))
             let sw = receiveResponse()
             if case let .success(data) = sw {
-                print("JVS did read state: \(data.map { String(format: "%02x", $0) }.joined())")
+                print("JVS did read state: \(data.map { String(format: "%02x ", $0) }.joined())")
             }
         }
         
@@ -120,10 +121,16 @@ final class JVSIO {
             }
         }
         packet.append(checksum)
-        
+        let data = Data(packet)
+        var written = 0
         do {
-
-            _ = try serialPort.writeData(Data(packet))
+            while written < data.count {
+                let wrote = try serialPort.writeData(data.suffix(from: written))
+                written += wrote
+                if written < data.count {
+                    print("remain=\(data.count-written)")
+                }
+            }
         } catch {
             print("JVS: Failed to write to serial port: \(error)")
         }
@@ -137,6 +144,9 @@ final class JVSIO {
         while pkt.count < estimatedLen {
             let chunk = try! serialPort.readData(ofLength: 64)
             pkt += chunk
+            if pkt.count < estimatedLen {
+                print("remaining \(Int(estimatedLen) - pkt.count)")
+            }
         }
 
         var rslt = Data()
