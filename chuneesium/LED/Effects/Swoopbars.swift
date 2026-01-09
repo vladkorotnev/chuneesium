@@ -6,14 +6,21 @@
 //
 
 final class LEDSwoopbars: LEDEffect {
-    var evenColor: SliderColor
-    var oddColor: SliderColor
+    private let evenColorMaker: () -> SliderColor
+    private let oddColorMaker: () -> SliderColor
+    private var evenColor: SliderColor = .init()
+    private var oddColor: SliderColor = .init()
     private var vPhase = 0
     private var isDown = false
     
-    init(evenColor: SliderColor, oddColor: SliderColor) {
-        self.evenColor = evenColor
-        self.oddColor = oddColor
+    init(
+        evenColor: @escaping @autoclosure () -> SliderColor,
+        oddColor: @escaping @autoclosure () -> SliderColor
+    ) {
+        self.evenColorMaker = evenColor
+        self.oddColorMaker = oddColor
+        self.evenColor = evenColorMaker()
+        self.oddColor = oddColorMaker()
     }
     
     var isFinished: Bool {
@@ -71,5 +78,7 @@ final class LEDSwoopbars: LEDEffect {
     func reset() {
         vPhase = 0
         isDown = false
+        evenColor = evenColorMaker()
+        oddColor = oddColorMaker()
     }
 }

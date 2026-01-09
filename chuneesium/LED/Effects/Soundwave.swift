@@ -11,15 +11,17 @@ final class LEDSoundwaveMiddle: LEDEffect {
     private var samples: [Double] = [
         0.3, 0.6, 1.0, 0.5, 0.1, 0.1, 0.2, 0.3, 0.6, 0.5, 0.2
     ]
-    var color: SliderColor
+    private let colorMaker: () -> SliderColor
+    private var color: SliderColor = .init()
     private let binding: LightBinding
     private var offset = 11
     
     init(
-        color: SliderColor,
+        color: @escaping @autoclosure () -> SliderColor,
         source: LightBinding
     ) {
-        self.color = color
+        self.colorMaker = color
+        self.color = colorMaker()
         self.binding = source
     }
     
@@ -82,6 +84,7 @@ final class LEDSoundwaveMiddle: LEDEffect {
     
     func reset() {
         offset = 11
+        color = colorMaker()
     }
     
     func react(to event: ControlEvent) {
@@ -95,15 +98,17 @@ final class LEDSoundwaveFull: LEDEffect {
     private var samples: [Double] = [
         0.3, 0.6, 1.0, 0.5, 0.1, 0.1, 0.2, 0.3, 0.6, 0.5, 0.2
     ]
-    var color: SliderColor
+    private let colorMaker: () -> SliderColor
+    private var color: SliderColor = .init()
     private let binding: LightBinding
     private var offset = 11
     
     init(
-        color: SliderColor,
+        color: @escaping @autoclosure () -> SliderColor,
         source: LightBinding
     ) {
-        self.color = color
+        self.colorMaker = color
+        self.color = colorMaker()
         self.binding = source
     }
     
@@ -166,6 +171,7 @@ final class LEDSoundwaveFull: LEDEffect {
     
     func reset() {
         offset = 11
+        color = colorMaker()
     }
     
     func react(to event: ControlEvent) {
@@ -177,14 +183,16 @@ final class LEDSoundwaveFull: LEDEffect {
 final class LEDVolumeBar: LEDEffect {
     private var sample = 0.0
     private var peak = 0.0
-    var color: SliderColor
+    private let colorMaker: () -> SliderColor
+    private var color: SliderColor = .init()
     private let binding: LightBinding
     
     init(
-        color: SliderColor,
+        color: @escaping @autoclosure () -> SliderColor,
         source: LightBinding
     ) {
-        self.color = color
+        self.colorMaker = color
+        self.color = colorMaker()
         self.binding = source
     }
     
@@ -243,6 +251,12 @@ final class LEDVolumeBar: LEDEffect {
         for i in 0..<display.columnCount {
             display.setColumn(x: i, column: (i % 2 == 0) ? rslt : rslt.reversed())
         }
+    }
+    
+    func reset() {
+        sample = 0.0
+        peak = 0.0
+        color = colorMaker()
     }
     
     func react(to event: ControlEvent) {

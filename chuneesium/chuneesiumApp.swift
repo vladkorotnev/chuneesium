@@ -20,9 +20,9 @@ struct chuneesiumApp: App {
         Window("LED", id: "ledSim") {
             HStack(spacing: 20) {
                 if ledSimEnabled {
-                    LEDColumn(stripData: vm.leftSurface.airTowerSeparateColors)
+                    AirTowerLEDColumn(surface: vm.leftSurface)
                     LEDPreviewer(left: vm.leftSurface, right: vm.rightSurface)
-                    LEDColumn(stripData: vm.rightSurface.airTowerSeparateColors)
+                    AirTowerLEDColumn(surface: vm.rightSurface)
                 }
             }
             .onDisappear {
@@ -82,6 +82,13 @@ struct chuneesiumApp: App {
                         vm.reconnectJVS()
                     } label: {
                         Image(systemName: vm.isJVSConnected ? "cable.connector.slash" : "cable.connector")
+                    }
+                }
+                
+                if vm.isJVSConnected {
+                    HStack {
+                        Text("Air Sensor State")
+                        AirStateView(status: vm.airState)
                     }
                 }
                 

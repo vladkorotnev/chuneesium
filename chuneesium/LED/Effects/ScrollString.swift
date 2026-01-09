@@ -12,7 +12,8 @@ final class LEDScrollString: LEDEffect {
     var text: String = "HELLO" {
         didSet { renderBitmap() }
     }
-    var color: Color = .indigo.opacity(0.6)
+    private let colorMaker: () -> Color
+    private var color: Color = .indigo.opacity(0.6)
     var speedDivisor = 4
     var holdoff = 22
     
@@ -22,12 +23,13 @@ final class LEDScrollString: LEDEffect {
     
     init(
         text: String,
-        color: Color = .indigo.opacity(0.6),
+        color: @escaping @autoclosure () -> Color = .indigo.opacity(0.6),
         speedDivisor: Int = 2,
         holdoff: Int = 11
     ) {
         self.text = text
-        self.color = color
+        self.colorMaker = color
+        self.color = colorMaker()
         self.holdoff = holdoff
         self.speedDivisor = speedDivisor
         renderBitmap()
@@ -35,6 +37,8 @@ final class LEDScrollString: LEDEffect {
     
     func reset() {
         position = -1
+        color = colorMaker()
+        renderBitmap()
     }
 
     func createStretchedTextImageRGBA32(

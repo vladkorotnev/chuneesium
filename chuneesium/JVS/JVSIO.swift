@@ -40,6 +40,10 @@ struct JVSSwitchState: Equatable {
         self.systemState = systemState
         self.playerBytes = playerBytes
     }
+    
+    var testButton: Bool {
+        systemState & 0x80 != 0
+    }
 }
 
 extension JVSCommand {

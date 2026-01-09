@@ -55,9 +55,25 @@ final class LEDSnake: LEDEffect {
     var framesPerStep: Int = 3
     
     // Colors
-    var headColor = SliderColor(r: 0, g: 255, b: 64)
-    var bodyColor = SliderColor(r: 0, g: 160, b: 32)
-    var foodColor = SliderColor(r: 255, g: 32, b: 32)
+    private let headColorMaker: () -> SliderColor
+    private let bodyColorMaker: () -> SliderColor
+    private let foodColorMaker: () -> SliderColor
+    private var headColor: SliderColor = .init()
+    private var bodyColor: SliderColor = .init()
+    private var foodColor: SliderColor = .init()
+    
+    init(
+        headColor: @escaping @autoclosure () -> SliderColor = SliderColor(r: 0, g: 255, b: 64),
+        bodyColor: @escaping @autoclosure () -> SliderColor = SliderColor(r: 0, g: 160, b: 32),
+        foodColor: @escaping @autoclosure () -> SliderColor = SliderColor(r: 255, g: 32, b: 32)
+    ) {
+        self.headColorMaker = headColor
+        self.bodyColorMaker = bodyColor
+        self.foodColorMaker = foodColor
+        self.headColor = headColorMaker()
+        self.bodyColor = bodyColorMaker()
+        self.foodColor = foodColorMaker()
+    }
     
     // Effect never really "finishes".
     var isFinished: Bool { false }
@@ -68,6 +84,9 @@ final class LEDSnake: LEDEffect {
         food = nil
         isInitialized = false
         frameCounter = 0
+        headColor = headColorMaker()
+        bodyColor = bodyColorMaker()
+        foodColor = foodColorMaker()
     }
     
     func draw(on display: LEDDisplay) {
@@ -192,8 +211,8 @@ final class LEDSnake: LEDEffect {
         
         for dir in candidateDirections {
             let d = dir.delta
-            var nx = head.x + d.dx
-            var ny = head.y + d.dy
+            let nx = head.x + d.dx
+            let ny = head.y + d.dy
             
             // Disallow moves that would go through walls.
             if nx < 0 || nx >= width || ny < 0 || ny >= height {

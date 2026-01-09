@@ -7,6 +7,13 @@
 
 import SwiftUI
 
+let DECK_A_PHASE_STATE = LightBinding.note(channel: 1, value: 2)
+let DECK_B_PHASE_STATE = LightBinding.note(channel: 2, value: 2)
+let DECK_A_END_STATE = LightBinding.note(channel: 0, value: 126)
+let DECK_B_END_STATE = LightBinding.note(channel: 0, value: 127)
+let AIR_SENSOR_INPUT = ActionBinding.controlChange(channel: 3, control: 127)
+let AIR_SENSOR_INPUT_SCALED = ActionBinding.controlChange(channel: 3, control: 126)
+
 let MY_SCENE = [
     // MARK: - Root
     ControlScene(
@@ -14,7 +21,7 @@ let MY_SCENE = [
         items: [
             // Deck A transport
             ButtonControl(
-                tint: .dynamic(color: .green, binding: .note(channel: 1, value: 2)),
+                tint: .dynamic(color: .green, binding: DECK_A_PHASE_STATE),
                 label: "Play",
                 position: 0,
                 width: 1,
@@ -187,8 +194,8 @@ let MY_SCENE = [
             // middle
             ButtonControl(
                 tint: .dynamic(color: .red, binding: .either(of: [
-                    .note(channel: 0, value: 126),
-                    .note(channel: 0, value: 127)
+                    DECK_A_END_STATE,
+                    DECK_B_END_STATE
                 ])),
                 label: "Song Select",
                 position: 7,
@@ -258,4 +265,20 @@ let MY_SCENE = [
         ],
         binding: .controlChange(channel: 0, control: 0, value: 1)
     )
+]
+
+let MY_LED_SEQUENCE: [LEDEffect] = [
+    LEDEffectRandomizer(effects: [
+        LEDEffectTime(timeInterval: 10.0, effect: LEDMatrixRain()),
+        LEDEffectTime(timeInterval: 15.0, effect: LEDSoundwaveMiddle(color: .init(color: [.indigo, .pink, .orange, .blue, .cyan, .green].randomElement()!), source: .controlChange(channel: 0, control: 127))),
+        LEDEffectTime(timeInterval: 10.0, effect: LEDSnake()),
+        LEDEffectTime(timeInterval: 8.0, effect: LEDVolumeBar(color: .init(color: [.indigo, .pink, .orange, .blue, .cyan, .green].randomElement()!), source: .controlChange(channel: 0, control: 127))),
+        LEDEffectTime(timeInterval: 10.0, effect: LEDSoundwaveFull(color: .init(color: [.indigo, .pink, .orange, .blue, .cyan, .green].randomElement()!), source: .controlChange(channel: 0, control: 127))),
+    ], numberOfLoops: 4),
+    LEDEffectRandomizer(effects: [
+        LEDEffectTime(timeInterval: 3.0, effect: LEDSwoopbars(evenColor: .init(color: [.pink, .cyan, .green, .orange, .teal].randomElement()!), oddColor: .init(color: [.indigo, .green, .blue, .mint, .purple].randomElement()!))),
+        LEDRainbow(endless: false, loopCount: 2),
+    ]),
+    LEDScrollString(text: "DJAKASAKA", color: [.pink, .cyan, .green, .orange, .teal].randomElement()!, speedDivisor: 2),
+    LEDScrollString(text: "INTHEMIX", color: [.indigo, .green, .blue, .mint, .purple].randomElement()!, speedDivisor: 2),
 ]

@@ -27,6 +27,7 @@ final class AppViewModel: ObservableObject {
     private var hardwareSlider: HardwareSlider?
     private var jvsIO: JVSIO?
     private var midi: MIDIIO
+    private var airTowers: AirTowers
     
     private var leftLedbd: LEDBD?
     private var rightLedbd: LEDBD?
@@ -34,6 +35,8 @@ final class AppViewModel: ObservableObject {
     private(set) var rightSurface: LEDSurface
     private var ledDisplay: LEDDisplay
     private var effector: LEDEffectPlayer
+    private var deckAPhaseLED: DeckPhaseLEDViewModel?
+    private var deckBPhaseLED: DeckPhaseLEDViewModel?
     private var previousTrack: TraktorSongOnAir? = nil
     
     
@@ -122,6 +125,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var isSliderConnected = false
     @Published private(set) var isLedConnected = false
     @Published private(set) var isJVSConnected = false
+    @Published private(set) var airState: [Bool] = []
     
     @Published var showBottomSlider: Bool = true {
         didSet {
@@ -180,25 +184,28 @@ final class AppViewModel: ObservableObject {
         
         leftSurface = LEDSurface(port: nil, stripCount: 5, stripInversePhase: false, brightness: ledCfgStore.brightness)
         rightSurface = LEDSurface(port: nil, stripCount: 6, stripInversePhase: true, brightness: ledCfgStore.brightness)
+
+        deckAPhaseLED = DeckPhaseLEDViewModel(
+            surface: leftSurface,
+            phaseBinding: DECK_A_PHASE_STATE,
+            endStateBinding: DECK_A_END_STATE,
+            phaseColor: SliderColor(r: 0, g: 255, b: 0),  // Green for normal phase
+            endColor: SliderColor(r: 255, g: 0, b: 0)     // Red for end state
+        )
         
-        leftSurface.airTowerSeparateColors = [.init(color: .red), .init(color: .pink), .init(color: .indigo)]
-        rightSurface.airTowerColor = .init(color: .green)
+        deckBPhaseLED = DeckPhaseLEDViewModel(
+            surface: rightSurface,
+            phaseBinding: DECK_B_PHASE_STATE,
+            endStateBinding: DECK_B_END_STATE,
+            phaseColor: SliderColor(r: 0, g: 255, b: 0),  // Green for normal phase
+            endColor: SliderColor(r: 255, g: 0, b: 0)     // Red for end state
+        )
         
         ledDisplay = LEDDisplay(leftHalf: leftSurface, rightHalf: rightSurface)
         effector = LEDEffectPlayer(display: ledDisplay)
-        effector.currentEffect = LEDEffectSequencer(effects: [
-            LEDEffectTime(timeInterval: 12.0, effect: LEDMatrixRain()),
-            LEDScrollString(text: "DJ AKASAKA", color: .cyan),
-            LEDEffectTime(timeInterval: 3.0, effect: LEDSwoopbars(evenColor: .init(color: .pink), oddColor: .init(color: .indigo))),
-            LEDScrollString(text: "INTHEMIX", color: .orange),
-            LEDEffectTime(timeInterval: 5.0, effect: LEDSoundwaveMiddle(color: .init(color: .indigo), source: .controlChange(channel: 0, control: 127))),
-            LEDRainbow(endless: false, loopCount: 2),
-            LEDEffectTime(timeInterval: 5.0, effect: LEDSoundwaveFull(color: .init(color: .orange), source: .controlChange(channel: 0, control: 127))),
-            LEDEffectTime(timeInterval: 10.0, effect: LEDSnake()),
-            LEDEffectTime(timeInterval: 3.0, effect: LEDSwoopbars(evenColor: .init(color: .cyan), oddColor: .init(color: .green))),
-            LEDEffectTime(timeInterval: 5.0, effect: LEDVolumeBar(color: .init(color: .orange), source: .controlChange(channel: 0, control: 127))),
-        ])
+        effector.currentEffect = LEDEffectSequencer(effects: MY_LED_SEQUENCE)
         
+        airTowers = AirTowers()
 
         sceneController = SceneController(
             slider: sliderCoordinator,
@@ -209,6 +216,8 @@ final class AppViewModel: ObservableObject {
         midi.events
             .sink { [weak self] event in
                 self?.effector.receive(event: event)
+                self?.deckAPhaseLED?.receive(event: event)
+                self?.deckBPhaseLED?.receive(event: event)
             }
             .store(in: &cancellables)
         
@@ -305,6 +314,19 @@ final class AppViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        airTowers.rawState
+            .sink { [weak self] val in
+                self?.airState = val
+            }
+            .store(in: &cancellables)
+        
+        airTowers.output
+            .sink { [weak self] value in
+                self?.midi.executeAction(AIR_SENSOR_INPUT, state: .value(Int(value * 127.0)))
+                self?.midi.executeAction(AIR_SENSOR_INPUT_SCALED, state: .value(Int((1.0-value) * 40.0) + 42))
+            }
+            .store(in: &cancellables)
+        
         updateWindowVisibility()
     }
     
@@ -383,8 +405,7 @@ final class AppViewModel: ObservableObject {
             // Subscribe to JVS switch state updates
             jvsIO?.switchState
                 .sink { [weak self] state in
-                    // Handle JVS switch state updates here
-                    print("JVS state: sys=\(String(format: "%02x", state.systemState)) player=\(state.playerBytes.map { String(format: "%02x", $0) }.joined(separator: " "))")
+                    self?.airTowers.feed(state: state)
                 }
                 .store(in: &cancellables)
         }

@@ -25,6 +25,16 @@ struct LEDColumn: View {
     }
 }
 
+/// A wrapper view that observes LEDSurface and displays its air tower colors.
+/// This ensures proper SwiftUI observation chain for nested ObservableObjects.
+struct AirTowerLEDColumn: View {
+    @ObservedObject var surface: LEDSurface
+    
+    var body: some View {
+        LEDColumn(stripData: surface.airTowerSeparateColors)
+    }
+}
+
 struct HalfLEDPreviewer: View {
     var pixelGrid: [[SliderColor]]
     
